@@ -10,7 +10,15 @@ export interface TrackRowData {
   loved: boolean;
 }
 
-export default function TrackRow({ data, editable }: { data: TrackRowData; editable: boolean }) {
+export default function TrackRow({
+  data,
+  editable,
+  onLoveChange,
+}: {
+  data: TrackRowData;
+  editable: boolean;
+  onLoveChange?: (loved: boolean) => void;
+}) {
   const [loved, setLoved] = useState(data.loved);
   const [busy, setBusy] = useState(false);
 
@@ -24,6 +32,7 @@ export default function TrackRow({ data, editable }: { data: TrackRowData; edita
         await api.love(data.artist, data.track);
       }
       setLoved(!loved);
+      onLoveChange?.(!loved);
     } finally {
       setBusy(false);
     }

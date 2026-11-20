@@ -7,6 +7,7 @@ import Register from "./pages/Register";
 import Profile from "./pages/Profile";
 import Settings from "./pages/Settings";
 import Leaderboard from "./pages/Leaderboard";
+import LovedTracks from "./pages/LovedTracks";
 
 function RequireAuth({ children }: { children: React.ReactNode }) {
   const { me, loading } = useAuth();
@@ -52,6 +53,16 @@ export default function App() {
             <RequireAuth>
               <Shell>
                 <Profile />
+              </Shell>
+            </RequireAuth>
+          }
+        />
+        <Route
+          path="/u/:username/loved"
+          element={
+            <RequireAuth>
+              <Shell>
+                <LovedTracks />
               </Shell>
             </RequireAuth>
           }
