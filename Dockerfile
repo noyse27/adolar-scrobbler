@@ -18,7 +18,13 @@ RUN npm run build
 
 # --- runtime ---
 FROM node:22-alpine AS runtime
-RUN apk add --no-cache openssl
+RUN apk add --no-cache openssl \
+  # the npm CLI bundled with the base image is never used at runtime (we
+  # invoke the local prisma binary directly below) but its own vendored
+  # dependencies (pacote, sigstore, picomatch, ...) regularly show up as
+  # HIGH-severity CVEs in image scans, so drop it instead of carrying it.
+  && rm -rf /usr/local/lib/node_modules/npm /usr/local/lib/node_modules/corepack \
+            /usr/local/bin/npm /usr/local/bin/npx /usr/local/bin/corepack
 WORKDIR /app
 ENV NODE_ENV=production
 ENV WEB_DIST_PATH=/app/web-dist
@@ -31,4 +37,4 @@ COPY --from=web-build /app/web/dist ./web-dist
 
 WORKDIR /app/server
 EXPOSE 4000
-CMD ["sh", "-c", "npx prisma migrate deploy && node dist/index.js"]
+CMD ["sh", "-c", "node node_modules/.bin/prisma migrate deploy && node dist/index.js"]
