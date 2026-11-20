@@ -30,29 +30,39 @@ und kann deinen kompletten Verlauf von last.fm importieren.
 ## Schnellstart (Docker)
 
 ```bash
-cp .env.example .env
+./setup.sh
 ```
 
-Trage in `.env` mindestens lange, zufällige Werte für `JWT_SECRET` und `COOKIE_SECRET`
-ein (z.B. mit `openssl rand -hex 32`), setze `POSTGRES_PASSWORD` und — sobald du einen
-Domainnamen hast — `PUBLIC_URL`.
+Legt beim ersten Lauf `.env` aus `.env.example` an und erzeugt `JWT_SECRET`,
+`COOKIE_SECRET` und `POSTGRES_PASSWORD` zufällig per `openssl rand -hex 32` (schon
+gesetzte Werte werden nie überschrieben — erneutes Ausführen ist also sicher, z.B.
+nach einem `git pull`), baut die Images und startet den Stack. Die App läuft danach
+auf `http://localhost:4000` (Port über `HOST_PORT` in `.env` änderbar). Der erste
+registrierte Account wird automatisch Admin.
+
+Alternativ manuell:
 
 ```bash
+cp .env.example .env
+# JWT_SECRET, COOKIE_SECRET, POSTGRES_PASSWORD selbst setzen (z.B. openssl rand -hex 32)
 docker compose up -d --build
 ```
 
-Die App läuft danach auf `http://localhost:4000` (Port über `HOST_PORT` in `.env`
-änderbar). Der erste registrierte Account wird automatisch Admin.
-
 ## Deployment auf deinem Webserver
 
-1. Repo auf den Server kopieren, `.env` wie oben befüllen (echte Secrets!,
-   `PUBLIC_URL=https://scrobbler.deine-domain.de`).
-2. `docker compose up -d --build`.
-3. Reverse Proxy (nginx/Caddy/Traefik) auf Container-Port `4000` (bzw. den in
+1. Repo auf den Server klonen.
+2. `./setup.sh` ausführen (erzeugt `.env` mit Secrets und startet den Stack).
+3. In `.env` noch `PUBLIC_URL=https://scrobbler.deine-domain.de` setzen und
+   `docker compose up -d` erneut laufen lassen, damit es übernommen wird.
+4. Reverse Proxy (nginx/Caddy/Traefik) auf Container-Port `4000` (bzw. den in
    `HOST_PORT` gewählten Host-Port) zeigen lassen, TLS terminieren.
-4. Fertig. Datenbank-Daten liegen im Docker-Volume `db-data` — für Backups
+5. Fertig. Datenbank-Daten liegen im Docker-Volume `db-data` — für Backups
    `docker compose exec db pg_dump -U adolar adolar_scrobbler > backup.sql`.
+
+**Hinweis:** `POSTGRES_PASSWORD` wird nur beim allerersten Start eines frischen
+Datenbank-Volumes wirksam. Änderst du es danach in `.env`, muss entweder Postgres'
+Passwort selbst aktualisiert werden oder (nur wenn noch keine wichtigen Daten drin
+sind) das Volume mit `docker compose down -v` neu angelegt werden.
 
 Beispiel-nginx-Snippet:
 
