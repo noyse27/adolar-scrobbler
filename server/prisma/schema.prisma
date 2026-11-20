@@ -32,8 +32,27 @@ model User {
   nowPlaying      NowPlaying?
   authTokens      AuthToken[]
   importJobs      ImportJob[]
+  invitesCreated  InviteCode[] @relation("InviteCreatedBy")
+
+  // the invite link this user registered through, if any
+  invitedByInviteId String?
+  invitedByInvite   InviteCode? @relation("InviteUsedBy", fields: [invitedByInviteId], references: [id])
 
   @@index([username])
+}
+
+model InviteCode {
+  id          String    @id @default(cuid())
+  token       String    @unique @default(cuid())
+  createdById String
+  createdBy   User      @relation("InviteCreatedBy", fields: [createdById], references: [id])
+  createdAt   DateTime  @default(now())
+  expiresAt   DateTime?
+  maxUses     Int       @default(1)
+  usedCount   Int       @default(0)
+  revoked     Boolean   @default(false)
+
+  registeredUsers User[] @relation("InviteUsedBy")
 }
 
 // short-lived token from auth.getToken, exchanged for a session via auth.getSession

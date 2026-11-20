@@ -26,13 +26,18 @@ export const api = {
   me: () => request<Me>("/api/auth/me"),
   login: (username: string, password: string) =>
     request("/api/auth/login", { method: "POST", body: JSON.stringify({ username, password }) }),
-  register: (username: string, password: string, displayName?: string) =>
-    request("/api/auth/register", {
-      method: "POST",
-      body: JSON.stringify({ username, password, displayName }),
-    }),
+  register: (opts: {
+    username: string;
+    password: string;
+    displayName?: string;
+    setupToken?: string;
+    inviteToken?: string;
+  }) => request("/api/auth/register", { method: "POST", body: JSON.stringify(opts) }),
   logout: () => request("/api/auth/logout", { method: "POST" }),
-  registrationOpen: () => request<{ open: boolean }>("/api/auth/registration-open"),
+  registrationOpen: () =>
+    request<{ bootstrap: boolean; requiresSetupToken: boolean; open: boolean }>(
+      "/api/auth/registration-open"
+    ),
 
   overview: (username: string, range: string) =>
     request(`/api/users/${username}/overview?range=${range}`),
@@ -65,4 +70,11 @@ export const api = {
       method: "POST",
       body: JSON.stringify({ lastfmApiKey }),
     }),
+  setAllowRegistration: (allow: boolean) =>
+    request("/api/admin/settings/registration", { method: "POST", body: JSON.stringify({ allow }) }),
+
+  invites: () => request("/api/admin/invites"),
+  createInvite: (opts: { expiresInHours?: number; maxUses?: number }) =>
+    request("/api/admin/invites", { method: "POST", body: JSON.stringify(opts) }),
+  revokeInvite: (id: string) => request(`/api/admin/invites/${id}/revoke`, { method: "POST" }),
 };

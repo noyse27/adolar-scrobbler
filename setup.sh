@@ -33,10 +33,18 @@ set_secret() {
 set_secret JWT_SECRET
 set_secret COOKIE_SECRET
 set_secret POSTGRES_PASSWORD
+set_secret SETUP_TOKEN
 
 docker compose --env-file "$env_file" -p adolar-scrobbler up --build -d
 
 port="$(grep '^HOST_PORT=' "$env_file" 2>/dev/null | tail -1 | cut -d= -f2-)"
 port="${port:-4000}"
+setup_token="$(grep '^SETUP_TOKEN=' "$env_file" 2>/dev/null | tail -1 | cut -d= -f2-)"
 echo "Adolar Scrobbler: http://localhost:$port"
+echo ""
+echo "Noch kein Account auf dieser Instanz? Gehe zu http://localhost:$port/register"
+echo "und gib dieses Setup-Token ein, um den ersten (Admin-)Account anzulegen:"
+echo "  $setup_token"
+echo "Das Token wird nur für diesen allerersten Account gebraucht."
+echo ""
 echo "Vergiss nicht, PUBLIC_URL in $env_file auf deine echte Domain zu setzen, sobald ein Reverse Proxy davor steht."
