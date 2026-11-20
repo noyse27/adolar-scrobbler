@@ -10,6 +10,8 @@ export default function ListeningClock({ hourly }: { hourly: { hour: number; cou
         <PolarAngleAxis dataKey="hour" tick={{ fill: "#b3a9e0", fontSize: 10 }} />
         <Tooltip
           contentStyle={{ background: "#1d1850", border: "1px solid rgba(169,139,255,.3)", borderRadius: 8 }}
+          labelStyle={{ color: "#f1edff" }}
+          itemStyle={{ color: "#f1edff" }}
         />
         <Radar dataKey="count" stroke="#31d5ff" fill="#31d5ff" fillOpacity={0.35} />
       </RadarChart>

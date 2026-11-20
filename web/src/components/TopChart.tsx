@@ -24,8 +24,10 @@ export default function TopChart({ data }: { data: Row[] }) {
           tickLine={false}
         />
         <Tooltip
+          cursor={{ fill: "rgba(169,139,255,.08)" }}
           contentStyle={{ background: "#1d1850", border: "1px solid rgba(169,139,255,.3)", borderRadius: 8 }}
           labelStyle={{ color: "#f1edff" }}
+          itemStyle={{ color: "#f1edff" }}
           formatter={(value: number) => [`${value} Scrobbles`, ""]}
         />
         <Bar dataKey="playcount" radius={[0, 6, 6, 0]}>
