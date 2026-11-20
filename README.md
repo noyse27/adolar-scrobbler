@@ -1,9 +1,16 @@
 # Adolar Scrobbler 🚀
 
-Dein eigener, selbst gehosteter last.fm-Klon für das Adolar-Universum. Nimmt Scrobbles
-von jedem last.fm-kompatiblen Client an, zeigt fancy Statistiken (Charts, Hör-Kalender,
-Hör-Uhr, Streaks, Musik-Diversität, "an diesem Tag vor Jahren" ...), hat eine Love-Funktion
-und kann deinen kompletten Verlauf von last.fm importieren.
+Dein eigener, selbst gehosteter Scrobble-Server für das Adolar-Universum, protokollkompatibel
+zu last.fm (so wie Libre.fm, GNU FM oder Maloja). Nimmt Scrobbles von jedem last.fm-kompatiblen
+Client an, zeigt fancy Statistiken (Charts, Hör-Kalender, Hör-Uhr, Streaks, Musik-Diversität,
+"an diesem Tag vor Jahren" ...), hat eine Love-Funktion und kann deinen kompletten Verlauf von
+last.fm importieren.
+
+Mit last.fm selbst hat das nichts zu tun — kein last.fm-Code, kein Branding, keine Daten von
+last.fm außer dem, was du dir per offizieller API mit deinem eigenen Account/Key selbst holst.
+Implementiert werden lediglich die offen dokumentierten Scrobbling-Protokolle (Audioscrobbler
+1.2 und Web-Service 2.0), damit bestehende Scrobbler-Clients ohne Codeänderung auch gegen diese
+Instanz laufen. Die Details stehen in [API.md](API.md).
 
 ## Features
 
@@ -117,7 +124,8 @@ In den Einstellungen (`/settings`) findest du nach dem Login:
 
 Viele Scrobbler-Apps/Plugins (z.B. mobile Player, Browser-Extensions, foobar2000,
 MPD-Setups) lassen sich auf eine "Custom"/"Libre.fm"-ähnliche Server-URL umstellen —
-genau dafür ist das gedacht.
+genau dafür ist das gedacht. Wer einen eigenen Client/eine eigene Integration dagegen
+schreiben will, findet die komplette Protokoll-Referenz in [API.md](API.md).
 
 ## Von last.fm importieren
 

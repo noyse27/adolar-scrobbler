@@ -26,6 +26,7 @@ export default function TopBar() {
               Dashboard
             </NavLink>
             <NavLink to={`/u/${me.username}`}>Mein Profil</NavLink>
+            <NavLink to={`/u/${me.username}/loved`}>Lieblingstracks</NavLink>
             <NavLink to="/leaderboard">Leaderboard</NavLink>
             <NavLink to="/settings">Einstellungen</NavLink>
             <button className="btn btn-ghost" onClick={logout}>
