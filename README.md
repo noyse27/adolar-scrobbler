@@ -7,7 +7,12 @@ und kann deinen kompletten Verlauf von last.fm importieren.
 
 ## Features
 
-- **Multi-User**: jeder registriert sich einen eigenen Account, eigenes Profil unter `/u/<name>`.
+- **Multi-User mit kontrollierter Registrierung**: der erste angelegte Account wird
+  automatisch Admin (geschützt durch ein einmaliges, von `setup.sh` generiertes
+  Setup-Token). Danach ist offene Registrierung standardmäßig **deaktiviert** — neue
+  Accounts entstehen entweder über einen von einem Admin erzeugten Einladungslink,
+  oder (falls ein Admin das in den Einstellungen erlaubt) frei über das Login-Fenster.
+  Jeder hat ein eigenes Profil unter `/u/<name>`.
 - **last.fm-kompatible API** (`/2.0/`): `auth.getToken`, `auth.getSession`,
   `auth.getMobileSession`, `track.scrobble` (auch Batch), `track.updateNowPlaying`,
   `track.love`/`track.unlove`, `user.getInfo`, `user.getRecentTracks`. Signierte Requests
@@ -34,11 +39,15 @@ und kann deinen kompletten Verlauf von last.fm importieren.
 ```
 
 Legt beim ersten Lauf `.env` aus `.env.example` an und erzeugt `JWT_SECRET`,
-`COOKIE_SECRET` und `POSTGRES_PASSWORD` zufällig per `openssl rand -hex 32` (schon
-gesetzte Werte werden nie überschrieben — erneutes Ausführen ist also sicher, z.B.
-nach einem `git pull`), baut die Images und startet den Stack. Die App läuft danach
-auf `http://localhost:4000` (Port über `HOST_PORT` in `.env` änderbar). Der erste
-registrierte Account wird automatisch Admin.
+`COOKIE_SECRET`, `POSTGRES_PASSWORD` und `SETUP_TOKEN` zufällig per `openssl rand -hex 32`
+(schon gesetzte Werte werden nie überschrieben — erneutes Ausführen ist also sicher,
+z.B. nach einem `git pull`), baut die Images und startet den Stack. Die App läuft
+danach auf `http://localhost:4000` (Port über `HOST_PORT` in `.env` änderbar).
+
+Am Ende gibt `setup.sh` das **Setup-Token** aus — gehe auf `/register` und gib es dort
+ein, um den ersten Account (automatisch Admin) anzulegen. Danach hat das Token keine
+Funktion mehr, und die offene Registrierung bleibt zu, bis du sie unter `/settings`
+freischaltest oder Einladungslinks verteilst (siehe „Registrierung & Einladungen" unten).
 
 Alternativ manuell:
 
@@ -77,6 +86,24 @@ server {
     }
 }
 ```
+
+## Registrierung & Einladungen
+
+- **Erster Account:** nur möglich mit dem Setup-Token aus `setup.sh` (bzw. `SETUP_TOKEN`
+  in `.env`). Wird automatisch Admin. Ohne `SETUP_TOKEN` gesetzt (z.B. lokale Entwicklung
+  ohne `setup.sh`) ist der erste Account ungeschützt anlegbar.
+- **Weitere Accounts:** standardmäßig gesperrt. Ein Admin kann unter `/settings` zwei
+  Wege öffnen, auch kombiniert:
+  - **Einladungslinks:** Admin erstellt unter „Einladungslinks" einen Link
+    (`.../register?invite=<token>`) mit wählbarer Nutzungsanzahl und optionaler
+    Gültigkeitsdauer, kopiert ihn und schickt ihn der Person. Funktioniert unabhängig
+    vom „Registrierung erlauben"-Schalter.
+  - **Offene Registrierung:** Schalter „Registrierung über das Login-Fenster erlauben"
+    unter „Registrierung" — lässt sich jederzeit umschalten, ohne den Container neu zu
+    starten.
+- Nutzer sehen in den Einstellungen nur das, was für sie als Nutzer relevant ist
+  (Scrobbler-Zugangsdaten, Import); den last.fm-API-Key der Instanz, den
+  Registrierungs-Schalter und die Einladungslinks sieht und verwaltet nur ein Admin.
 
 ## Scrobbler-Client einrichten
 

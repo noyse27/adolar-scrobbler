@@ -146,6 +146,137 @@ function AdminPanel() {
         App-API-Key dieser Instanz (für last.fm-kompatible Scrobbler-Clients):{" "}
         <code>{settings.appApiKey}</code>
       </p>
+
+      <hr style={{ border: "none", borderTop: "1px solid var(--border)", margin: "18px 0" }} />
+
+      <h3>Registrierung</h3>
+      <p className="muted">
+        Standardmäßig ist die offene Registrierung deaktiviert. Benutzer können sich entweder über
+        einen Einladungslink anmelden, oder — wenn hier aktiviert — frei über das Login-Fenster.
+      </p>
+      <label className="row" style={{ cursor: "pointer" }}>
+        <input
+          type="checkbox"
+          checked={settings.allowRegistration}
+          onChange={async (e) => {
+            await api.setAllowRegistration(e.target.checked);
+            setSettings(await api.adminSettings());
+          }}
+        />
+        Registrierung über das Login-Fenster erlauben
+      </label>
+    </div>
+  );
+}
+
+function InvitesPanel() {
+  const [invites, setInvites] = useState<any[]>([]);
+  const [maxUses, setMaxUses] = useState(1);
+  const [expiresInHours, setExpiresInHours] = useState<number | "">("");
+  const [copiedId, setCopiedId] = useState<string | null>(null);
+
+  async function refresh() {
+    setInvites(await api.invites());
+  }
+
+  useEffect(() => {
+    refresh();
+  }, []);
+
+  async function create() {
+    await api.createInvite({
+      maxUses,
+      expiresInHours: expiresInHours === "" ? undefined : Number(expiresInHours),
+    });
+    await refresh();
+  }
+
+  async function revoke(id: string) {
+    await api.revokeInvite(id);
+    await refresh();
+  }
+
+  function inviteUrl(token: string) {
+    return `${window.location.origin}/register?invite=${token}`;
+  }
+
+  async function copy(invite: any) {
+    try {
+      await navigator.clipboard.writeText(inviteUrl(invite.token));
+      setCopiedId(invite.id);
+      setTimeout(() => setCopiedId(null), 1500);
+    } catch {
+      // clipboard API unavailable (e.g. insecure context) — link is still shown as text
+    }
+  }
+
+  return (
+    <div className="card">
+      <h3>Einladungslinks</h3>
+      <p className="muted">
+        Ein Einladungslink erlaubt eine Registrierung, auch wenn die offene Registrierung oben
+        deaktiviert ist.
+      </p>
+      <div className="row" style={{ marginTop: 10, flexWrap: "wrap" }}>
+        <input
+          type="number"
+          min={1}
+          style={{ width: 90 }}
+          value={maxUses}
+          onChange={(e) => setMaxUses(Math.max(1, Number(e.target.value)))}
+          title="Maximale Nutzungen"
+        />
+        <span className="muted">x nutzbar,</span>
+        <input
+          type="number"
+          min={1}
+          placeholder="läuft nie ab"
+          style={{ width: 140 }}
+          value={expiresInHours}
+          onChange={(e) => setExpiresInHours(e.target.value === "" ? "" : Number(e.target.value))}
+          title="Gültigkeit in Stunden"
+        />
+        <span className="muted">Stunden gültig</span>
+        <button className="btn" onClick={create}>
+          Link erstellen
+        </button>
+      </div>
+
+      <div style={{ marginTop: 16 }}>
+        {invites.length === 0 && <p className="muted">Noch keine Einladungslinks.</p>}
+        {invites.map((i) => {
+          const expired = i.expiresAt && new Date(i.expiresAt) < new Date();
+          const exhausted = i.usedCount >= i.maxUses;
+          const inactive = i.revoked || expired || exhausted;
+          return (
+            <div className="track-row" key={i.id}>
+              <div className="track-meta">
+                <div className="track-name" style={{ opacity: inactive ? 0.5 : 1 }}>
+                  {i.usedCount}/{i.maxUses} genutzt
+                  {i.revoked ? " · widerrufen" : expired ? " · abgelaufen" : ""}
+                </div>
+                <div className="artist-name">
+                  {i.registeredUsernames.length > 0
+                    ? `registriert: ${i.registeredUsernames.join(", ")}`
+                    : "noch niemand registriert"}
+                </div>
+              </div>
+              <div className="row">
+                {!inactive && (
+                  <button className="btn btn-ghost" onClick={() => copy(i)}>
+                    {copiedId === i.id ? "Kopiert ✓" : "Link kopieren"}
+                  </button>
+                )}
+                {!i.revoked && (
+                  <button className="btn btn-ghost" onClick={() => revoke(i.id)}>
+                    Widerrufen
+                  </button>
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }
@@ -178,7 +309,12 @@ export default function Settings() {
 
       <ImportPanel />
 
-      {me.role === "ADMIN" && <AdminPanel />}
+      {me.role === "ADMIN" && (
+        <>
+          <AdminPanel />
+          <InvitesPanel />
+        </>
+      )}
     </div>
   );
 }
