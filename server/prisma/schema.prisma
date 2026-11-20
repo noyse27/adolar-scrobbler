@@ -1,0 +1,153 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ADMIN
+  USER
+}
+
+model User {
+  id           String   @id @default(cuid())
+  username     String   @unique
+  displayName  String?
+  email        String?  @unique
+  passwordHash String
+  // md5(password), kept only to support the legacy Audioscrobbler 1.2 handshake
+  // protocol, which is defined in terms of md5(password). Not used for web login.
+  legacyPasswordMd5 String
+  role         Role     @default(USER)
+  createdAt    DateTime @default(now())
+
+  // permanent last.fm-style session key handed to scrobbler clients
+  sessionKey String @unique @default(cuid())
+
+  scrobbles       Scrobble[]
+  loves           Love[]
+  nowPlaying      NowPlaying?
+  authTokens      AuthToken[]
+  importJobs      ImportJob[]
+
+  @@index([username])
+}
+
+// short-lived token from auth.getToken, exchanged for a session via auth.getSession
+model AuthToken {
+  token      String    @id @default(cuid())
+  userId     String?
+  user       User?     @relation(fields: [userId], references: [id])
+  authorized Boolean   @default(false)
+  createdAt  DateTime  @default(now())
+  expiresAt  DateTime
+}
+
+model Artist {
+  id        String   @id @default(cuid())
+  name      String
+  nameKey   String   @unique // lowercased/trimmed, used for dedup lookups
+  mbid      String?
+  createdAt DateTime @default(now())
+
+  albums Album[]
+  tracks Track[]
+}
+
+model Album {
+  id        String   @id @default(cuid())
+  name      String
+  nameKey   String
+  mbid      String?
+  artistId  String
+  artist    Artist   @relation(fields: [artistId], references: [id])
+  createdAt DateTime @default(now())
+
+  tracks Track[]
+
+  @@unique([artistId, nameKey])
+}
+
+model Track {
+  id         String   @id @default(cuid())
+  name       String
+  nameKey    String
+  mbid       String?
+  durationMs Int?
+  artistId   String
+  artist     Artist   @relation(fields: [artistId], references: [id])
+  albumId    String?
+  album      Album?   @relation(fields: [albumId], references: [id])
+  createdAt  DateTime @default(now())
+
+  scrobbles  Scrobble[]
+  loves      Love[]
+  nowPlaying NowPlaying[]
+
+  @@unique([artistId, nameKey])
+  @@index([albumId])
+}
+
+model Scrobble {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  trackId   String
+  track     Track    @relation(fields: [trackId], references: [id])
+  playedAt  DateTime
+  source    String   @default("api") // api | import | legacy
+  createdAt DateTime @default(now())
+
+  @@unique([userId, trackId, playedAt])
+  @@index([userId, playedAt])
+  @@index([trackId])
+}
+
+model Love {
+  id       String   @id @default(cuid())
+  userId   String
+  user     User     @relation(fields: [userId], references: [id])
+  trackId  String
+  track    Track    @relation(fields: [trackId], references: [id])
+  lovedAt  DateTime @default(now())
+
+  @@unique([userId, trackId])
+}
+
+model NowPlaying {
+  userId    String   @id
+  user      User     @relation(fields: [userId], references: [id])
+  trackId   String
+  track     Track    @relation(fields: [trackId], references: [id])
+  startedAt DateTime @default(now())
+}
+
+enum ImportStatus {
+  PENDING
+  RUNNING
+  DONE
+  FAILED
+}
+
+model ImportJob {
+  id             String       @id @default(cuid())
+  userId         String
+  user           User         @relation(fields: [userId], references: [id])
+  lastfmUsername String
+  status         ImportStatus @default(PENDING)
+  totalPages     Int?
+  processedPages Int          @default(0)
+  importedCount  Int          @default(0)
+  skippedCount   Int          @default(0)
+  error          String?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+}
+
+model InstanceSetting {
+  key   String @id
+  value String
+}
