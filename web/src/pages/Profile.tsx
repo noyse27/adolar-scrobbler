@@ -41,10 +41,20 @@ export default function Profile() {
 
   useEffect(() => {
     if (!username) return;
-    api.recent(username, 20).then(setRecent);
     api.heatmap(username, year).then(setHeatmap);
     api.clock(username).then(setClock as any);
     api.wild(username).then(setWild);
+  }, [username]);
+
+  useEffect(() => {
+    if (!username) return;
+    const refresh = () => api.recent(username, 20).then(setRecent);
+    refresh();
+    // Poll while the profile is open so "now playing" shows up without a
+    // manual reload - the backend only knows about it from the last
+    // track.updateNowPlaying call, there's no push to the browser.
+    const timer = setInterval(refresh, 15_000);
+    return () => clearInterval(timer);
   }, [username]);
 
   if (!username) return null;
