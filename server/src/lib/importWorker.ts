@@ -17,6 +17,12 @@ interface LastfmTrackEntry {
   "@attr"?: { nowplaying?: string };
 }
 
+interface LastfmLovedEntry {
+  name: string;
+  artist: { name?: string; "#text"?: string };
+  date?: { uts: string };
+}
+
 export async function runImportJob(jobId: string) {
   const job = await prisma.importJob.findUnique({ where: { id: jobId } });
   if (!job) return;
@@ -91,6 +97,71 @@ export async function runImportJob(jobId: string) {
       page++;
       if (page <= totalPages) await sleep(DELAY_MS);
     } while (page <= totalPages);
+
+    // Loved tracks (user.getLovedTracks) - same job, separate progress
+    // counters, since it's a different last.fm endpoint/pagination.
+    let lovedPage = 1;
+    let lovedTotalPages = 1;
+    let lovedImported = 0;
+    let lovedSkipped = 0;
+
+    do {
+      const url = new URL(LASTFM_API);
+      url.searchParams.set("method", "user.getlovedtracks");
+      url.searchParams.set("user", job.lastfmUsername);
+      url.searchParams.set("api_key", apiKey);
+      url.searchParams.set("format", "json");
+      url.searchParams.set("limit", String(PAGE_SIZE));
+      url.searchParams.set("page", String(lovedPage));
+
+      const res = await fetch(url);
+      if (!res.ok) {
+        throw new Error(`last.fm API returned HTTP ${res.status}`);
+      }
+      const data = (await res.json()) as any;
+      if (data.error) {
+        throw new Error(`last.fm API error ${data.error}: ${data.message}`);
+      }
+
+      lovedTotalPages = Number(data.lovedtracks?.["@attr"]?.totalPages ?? 1);
+      const tracks: LastfmLovedEntry[] = Array.isArray(data.lovedtracks?.track)
+        ? data.lovedtracks.track
+        : data.lovedtracks?.track
+        ? [data.lovedtracks.track]
+        : [];
+
+      for (const t of tracks) {
+        const artistName = t.artist?.name ?? t.artist?.["#text"];
+        if (!artistName || !t.name) {
+          lovedSkipped++;
+          continue;
+        }
+        const track = await resolveTrack({ artist: artistName, track: t.name });
+        const lovedAt = t.date?.uts ? new Date(Number(t.date.uts) * 1000) : new Date();
+        const result = await prisma.love
+          .upsert({
+            where: { userId_trackId: { userId: job.userId, trackId: track.id } },
+            update: {},
+            create: { userId: job.userId, trackId: track.id, lovedAt },
+          })
+          .catch(() => null);
+        if (result) lovedImported++;
+        else lovedSkipped++;
+      }
+
+      await prisma.importJob.update({
+        where: { id: jobId },
+        data: {
+          lovedProcessedPages: lovedPage,
+          lovedTotalPages,
+          lovedImportedCount: lovedImported,
+          lovedSkippedCount: lovedSkipped,
+        },
+      });
+
+      lovedPage++;
+      if (lovedPage <= lovedTotalPages) await sleep(DELAY_MS);
+    } while (lovedPage <= lovedTotalPages);
 
     await prisma.importJob.update({ where: { id: jobId }, data: { status: "DONE" } });
   } catch (err: any) {

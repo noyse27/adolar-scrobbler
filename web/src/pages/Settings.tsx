@@ -49,15 +49,24 @@ function ImportPanel() {
   }
 
   const running = job && (job.status === "RUNNING" || job.status === "PENDING");
-  const progress =
-    job?.totalPages ? Math.min(100, Math.round((job.processedPages / job.totalPages) * 100)) : 0;
+
+  // Scrobbles import first, then loved tracks - same job, two phases.
+  const scrobblesDone = Boolean(job?.totalPages) && job.processedPages >= job.totalPages;
+  const scrobblesProgress = job?.totalPages
+    ? Math.min(100, Math.round((job.processedPages / job.totalPages) * 100))
+    : 0;
+  const lovedProgress = job?.lovedTotalPages
+    ? Math.min(100, Math.round((job.lovedProcessedPages / job.lovedTotalPages) * 100))
+    : 0;
+  const overallProgress = job?.status === "DONE" ? 100 : scrobblesDone ? lovedProgress : scrobblesProgress;
 
   return (
     <div className="card">
       <h3>Von last.fm importieren</h3>
       <p className="muted">
-        Trage deinen last.fm-Benutzernamen ein. Dein kompletter öffentlicher Scrobble-Verlauf wird
-        importiert (mehrfacher Import ist sicher, Duplikate werden übersprungen).
+        Trage deinen last.fm-Benutzernamen ein. Dein kompletter öffentlicher Scrobble-Verlauf und
+        deine Loved-Tracks werden importiert (mehrfacher Import ist sicher, Duplikate werden
+        übersprungen).
       </p>
       <div className="row" style={{ marginTop: 12 }}>
         <input
@@ -75,7 +84,7 @@ function ImportPanel() {
         <div style={{ marginTop: 16 }}>
           <div className="muted">
             Status: <strong>{job.status}</strong>
-            {job.totalPages ? ` · Seite ${job.processedPages}/${job.totalPages}` : ""}
+            {running ? (scrobblesDone ? " · Phase: Loved-Tracks" : " · Phase: Scrobbles") : ""}
           </div>
           <div
             style={{
@@ -89,16 +98,21 @@ function ImportPanel() {
             <div
               style={{
                 height: "100%",
-                width: `${running ? progress : job.status === "DONE" ? 100 : 0}%`,
+                width: `${overallProgress}%`,
                 background: "linear-gradient(135deg, var(--violet), var(--cyan))",
                 transition: "width 400ms ease",
               }}
             />
           </div>
           <div className="muted" style={{ marginTop: 6 }}>
-            {job.importedCount} importiert · {job.skippedCount} übersprungen
-            {job.error ? ` · Fehler: ${job.error}` : ""}
+            Scrobbles: {job.importedCount} importiert · {job.skippedCount} übersprungen
+            {job.totalPages ? ` (Seite ${job.processedPages}/${job.totalPages})` : ""}
           </div>
+          <div className="muted" style={{ marginTop: 2 }}>
+            Loved-Tracks: {job.lovedImportedCount} importiert · {job.lovedSkippedCount} übersprungen
+            {job.lovedTotalPages ? ` (Seite ${job.lovedProcessedPages}/${job.lovedTotalPages})` : ""}
+          </div>
+          {job.error && <div className="error-text" style={{ marginTop: 6 }}>Fehler: {job.error}</div>}
         </div>
       )}
     </div>

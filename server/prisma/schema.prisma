@@ -157,10 +157,16 @@ model ImportJob {
   user           User         @relation(fields: [userId], references: [id])
   lastfmUsername String
   status         ImportStatus @default(PENDING)
+  // Scrobble history (user.getRecentTracks)
   totalPages     Int?
   processedPages Int          @default(0)
   importedCount  Int          @default(0)
   skippedCount   Int          @default(0)
+  // Loved tracks (user.getLovedTracks) - runs after scrobbles, same job
+  lovedTotalPages     Int?
+  lovedProcessedPages Int     @default(0)
+  lovedImportedCount  Int     @default(0)
+  lovedSkippedCount   Int     @default(0)
   error          String?
   createdAt      DateTime     @default(now())
   updatedAt      DateTime     @updatedAt

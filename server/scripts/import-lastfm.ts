@@ -39,7 +39,12 @@ async function main() {
   await runImportJob(job.id);
 
   const final = await prisma.importJob.findUnique({ where: { id: job.id } });
-  console.log(`Done. status=${final?.status} imported=${final?.importedCount} skipped=${final?.skippedCount} error=${final?.error ?? "-"}`);
+  console.log(
+    `Done. status=${final?.status} ` +
+      `scrobbles: imported=${final?.importedCount} skipped=${final?.skippedCount} ` +
+      `loved: imported=${final?.lovedImportedCount} skipped=${final?.lovedSkippedCount} ` +
+      `error=${final?.error ?? "-"}`
+  );
   process.exit(final?.status === "DONE" ? 0 : 1);
 }
 

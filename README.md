@@ -133,9 +133,10 @@ schreiben will, findet die komplette Protokoll-Referenz in [API.md](API.md).
    (kostenlos: <https://www.last.fm/api/account/create>, "Callback URL" kannst du leer
    lassen).
 2. Jeder User trägt in `/settings` seinen **last.fm-Benutzernamen** ein und klickt
-   "Import starten". Der komplette öffentliche Scrobble-Verlauf wird seitenweise über
-   die offizielle last.fm-API (`user.getRecentTracks`) geholt und eingetragen, inkl.
-   Fortschrittsanzeige. Läuft der Import nochmal, werden bereits importierte Scrobbles
+   "Import starten". In einem Durchlauf werden seitenweise sowohl der komplette
+   öffentliche Scrobble-Verlauf (`user.getRecentTracks`) als auch die Loved-Tracks
+   (`user.getLovedTracks`) geholt und eingetragen, mit getrennter Fortschrittsanzeige
+   pro Phase. Läuft der Import nochmal, werden bereits importierte Scrobbles/Loves
    automatisch übersprungen.
 
 Alternativ per CLI (z.B. für einen Erst-Import mehrerer Accounts):
