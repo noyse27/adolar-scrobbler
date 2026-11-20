@@ -16,10 +16,16 @@ export default async function adminRoutes(app: FastifyInstance) {
   app.get("/api/admin/settings", async (req, reply) => {
     if (!(await requireAdmin(req, reply))) return;
     const lastfmApiKey = await getInstanceSetting("lastfm_api_key");
-    const { apiKey } = await getOrCreateAppCredentials();
+    const { apiKey, secret } = await getOrCreateAppCredentials();
     return {
       lastfmApiKeyConfigured: Boolean(lastfmApiKey),
       appApiKey: apiKey,
+      // The shared secret is normally never handed to clients (same as a
+      // real last.fm API application's secret) - it's exposed here, to
+      // admins only, so the same person who runs this instance can plug it
+      // into another app they also control (Adolar web/Next) that wants to
+      // scrobble here using the signed 2.0 API.
+      appSecret: secret,
       allowRegistration: await getAllowRegistration(),
     };
   });

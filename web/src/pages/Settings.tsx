@@ -109,6 +109,7 @@ function AdminPanel() {
   const [settings, setSettings] = useState<any>(null);
   const [key, setKey] = useState("");
   const [saved, setSaved] = useState(false);
+  const [showSecret, setShowSecret] = useState(false);
 
   useEffect(() => {
     api.adminSettings().then(setSettings).catch(() => setSettings(null));
@@ -142,9 +143,27 @@ function AdminPanel() {
         </button>
       </div>
       {saved && <p className="muted">Gespeichert.</p>}
-      <p className="muted" style={{ marginTop: 14 }}>
-        App-API-Key dieser Instanz (für last.fm-kompatible Scrobbler-Clients):{" "}
-        <code>{settings.appApiKey}</code>
+
+      <hr style={{ border: "none", borderTop: "1px solid var(--border)", margin: "18px 0" }} />
+
+      <h3>App-Zugangsdaten (für last.fm-kompatible Scrobbler-Clients)</h3>
+      <p className="muted">
+        Diese Instanz tritt gegenüber anderen Apps wie eine registrierte last.fm-API-Anwendung
+        auf. Trägst du API-Key + Secret z.B. in Adolar (Web) oder Adolar Next ein, können diese
+        hierher scrobbeln — zusätzlich oder statt zu last.fm.
+      </p>
+      <p className="muted">
+        API-Key: <code>{settings.appApiKey}</code>
+      </p>
+      <p className="muted">
+        Secret:{" "}
+        {showSecret ? (
+          <code>{settings.appSecret}</code>
+        ) : (
+          <button className="btn btn-ghost" onClick={() => setShowSecret(true)} style={{ padding: "2px 10px" }}>
+            anzeigen
+          </button>
+        )}
       </p>
 
       <hr style={{ border: "none", borderTop: "1px solid var(--border)", margin: "18px 0" }} />
