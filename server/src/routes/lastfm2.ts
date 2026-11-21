@@ -6,6 +6,12 @@ import { toXml, lfmResponse } from "../lib/lastfmXml.js";
 
 type Params = Record<string, string | undefined>;
 
+function parseYear(value: string | undefined): number | undefined {
+  if (!value || !/^\d{4}$/.test(value)) return undefined;
+  const year = Number(value);
+  return year >= 1000 && year <= new Date().getFullYear() + 1 ? year : undefined;
+}
+
 const ERR = {
   INVALID_PARAMS: 6,
   AUTH_FAILED: 4,
@@ -165,7 +171,7 @@ export default async function lastfm2Routes(app: FastifyInstance) {
             album: params.album,
             mbid: params.mbid,
             durationMs: params.duration ? Number(params.duration) * 1000 : undefined,
-            year: params.year ? Number(params.year) : undefined,
+            year: parseYear(params.year),
           });
           await prisma.nowPlaying.upsert({
             where: { userId: user.id },
@@ -196,7 +202,7 @@ export default async function lastfm2Routes(app: FastifyInstance) {
               album: s.album,
               mbid: s.mbid,
               durationMs: s.duration ? Number(s.duration) * 1000 : undefined,
-              year: s.year ? Number(s.year) : undefined,
+              year: parseYear(s.year),
             });
             const playedAt = new Date(Number(s.timestamp) * 1000);
             await prisma.scrobble

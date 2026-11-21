@@ -6,6 +6,7 @@ export interface TrackRowData {
   track: string;
   artist: string;
   album?: string | null;
+  year?: number | null;
   playedAt?: string;
   loved: boolean;
 }
@@ -45,6 +46,7 @@ export default function TrackRow({
         <div className="artist-name">
           {data.artist}
           {data.album ? ` · ${data.album}` : ""}
+          {data.year ? ` · ${data.year}` : ""}
         </div>
       </div>
       <div className="row">

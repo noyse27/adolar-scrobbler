@@ -50,6 +50,8 @@ export const api = {
     request(`/api/users/${username}/charts/albums?range=${range}&limit=${limit}`),
   topTracks: (username: string, range: string, limit = 10) =>
     request(`/api/users/${username}/charts/tracks?range=${range}&limit=${limit}`),
+  releaseYears: (username: string, range: string) =>
+    request(`/api/users/${username}/charts/release-years?range=${range}`),
   recent: (username: string, limit = 25) => request(`/api/users/${username}/recent?limit=${limit}`),
   loves: (username: string) => request(`/api/users/${username}/loves`),
   heatmap: (username: string, year: number) => request(`/api/users/${username}/heatmap?year=${year}`),
