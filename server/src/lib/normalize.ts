@@ -23,7 +23,7 @@ export async function findOrCreateAlbum(artistId: string, name: string, mbid?: s
 export async function findOrCreateTrack(
   artistId: string,
   name: string,
-  opts: { albumId?: string; mbid?: string; durationMs?: number } = {}
+  opts: { albumId?: string; mbid?: string; durationMs?: number; year?: number } = {}
 ) {
   const key = nameKey(name);
   const existing = await prisma.track.findUnique({
@@ -31,12 +31,14 @@ export async function findOrCreateTrack(
   });
   if (existing) {
     // backfill album/duration if we learn more about a track we'd only seen bare before
-    if ((opts.albumId && !existing.albumId) || (opts.durationMs && !existing.durationMs)) {
+    if ((opts.albumId && !existing.albumId) || (opts.durationMs && !existing.durationMs) ||
+        (opts.year && !existing.year)) {
       return prisma.track.update({
         where: { id: existing.id },
         data: {
           albumId: existing.albumId ?? opts.albumId,
           durationMs: existing.durationMs ?? opts.durationMs,
+          year: existing.year ?? opts.year,
         },
       });
     }
@@ -50,6 +52,7 @@ export async function findOrCreateTrack(
       albumId: opts.albumId,
       mbid: opts.mbid,
       durationMs: opts.durationMs,
+      year: opts.year,
     },
   });
 }
@@ -62,6 +65,7 @@ export async function resolveTrack(input: {
   albumMbid?: string;
   artistMbid?: string;
   durationMs?: number;
+  year?: number;
 }) {
   const artist = await findOrCreateArtist(input.artist, input.artistMbid);
   let albumId: string | undefined;
@@ -73,6 +77,7 @@ export async function resolveTrack(input: {
     albumId,
     mbid: input.mbid,
     durationMs: input.durationMs,
+    year: input.year,
   });
   return track;
 }

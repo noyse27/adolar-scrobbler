@@ -78,6 +78,7 @@ function extractBatch(params: Params): Array<Record<string, string | undefined>>
         mbid: params.mbid,
         albumArtist: params.albumArtist,
         duration: params.duration,
+        year: params.year,
       },
     ];
   }
@@ -90,6 +91,7 @@ function extractBatch(params: Params): Array<Record<string, string | undefined>>
     mbid: params[`mbid[${i}]`],
     albumArtist: params[`albumArtist[${i}]`],
     duration: params[`duration[${i}]`],
+    year: params[`year[${i}]`],
   }));
 }
 
@@ -163,6 +165,7 @@ export default async function lastfm2Routes(app: FastifyInstance) {
             album: params.album,
             mbid: params.mbid,
             durationMs: params.duration ? Number(params.duration) * 1000 : undefined,
+            year: params.year ? Number(params.year) : undefined,
           });
           await prisma.nowPlaying.upsert({
             where: { userId: user.id },
@@ -193,6 +196,7 @@ export default async function lastfm2Routes(app: FastifyInstance) {
               album: s.album,
               mbid: s.mbid,
               durationMs: s.duration ? Number(s.duration) * 1000 : undefined,
+              year: s.year ? Number(s.year) : undefined,
             });
             const playedAt = new Date(Number(s.timestamp) * 1000);
             await prisma.scrobble
@@ -275,6 +279,39 @@ export default async function lastfm2Routes(app: FastifyInstance) {
                 artist: { "#text": r.track.artist.name },
                 album: { "#text": r.track.album?.name ?? "" },
                 date: { $: { uts: String(Math.floor(r.playedAt.getTime() / 1000)) } },
+              })),
+            },
+          });
+        }
+
+        case "user.getlovedtracks": {
+          const username = params.user;
+          if (!username) return fail(reply, params, ERR.INVALID_PARAMS, "Missing parameters");
+          const user = await prisma.user.findUnique({ where: { username } });
+          if (!user) return fail(reply, params, ERR.INVALID_PARAMS, "User not found");
+          const limit = Math.min(Math.max(Number(params.limit ?? 50), 1), 200);
+          const page = Math.max(Number(params.page ?? 1), 1);
+          const total = await prisma.love.count({ where: { userId: user.id } });
+          const rows = await prisma.love.findMany({
+            where: { userId: user.id },
+            include: { track: { include: { artist: true } } },
+            orderBy: { lovedAt: "desc" },
+            take: limit,
+            skip: (page - 1) * limit,
+          });
+          return send(reply, params, "ok", {
+            lovedtracks: {
+              $: {
+                user: user.username,
+                page: String(page),
+                perPage: String(limit),
+                totalPages: String(Math.ceil(total / limit)),
+                total: String(total),
+              },
+              track: rows.map((r) => ({
+                name: r.track.name,
+                artist: { name: r.track.artist.name },
+                date: { $: { uts: String(Math.floor(r.lovedAt.getTime() / 1000)) } },
               })),
             },
           });
