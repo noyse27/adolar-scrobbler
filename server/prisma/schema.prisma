@@ -96,6 +96,7 @@ model Track {
   nameKey    String
   mbid       String?
   durationMs Int?
+  year       Int?
   artistId   String
   artist     Artist   @relation(fields: [artistId], references: [id])
   albumId    String?
