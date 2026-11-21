@@ -30,6 +30,7 @@ export default function LovedTracks() {
               track: l.track,
               artist: l.artist,
               album: l.album,
+              year: l.year,
               playedAt: l.lovedAt,
               loved: true,
             }}

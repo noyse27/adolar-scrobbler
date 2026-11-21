@@ -119,8 +119,8 @@ gültig, bis der Nutzer ihn in `/settings` widerruft.
 | `auth.getToken` | – | `api_key` | Liefert `token` für den Autorisierungs-Flow. |
 | `auth.getSession` | ja | `api_key`, `token` | Tauscht ein autorisiertes `token` gegen `session.key`. |
 | `auth.getMobileSession` | ja | `api_key`, `username`, `password` | Liefert `session.key` direkt per Login. |
-| `track.updateNowPlaying` | ja | `sk`, `artist`, `track`, `album?`, `mbid?`, `duration?` | Setzt den "jetzt läuft"-Status. |
-| `track.scrobble` | ja | `sk`, `artist`, `track`, `timestamp`, `album?`, `albumArtist?`, `mbid?`, `duration?` (auch `artist[0]`, `track[0]`, ... für Batches bis 50 Einträge) | Trägt einen oder mehrere Scrobbles ein. `timestamp` = Unix-Zeit (Sekunden) des Songstarts. Duplikate (gleicher Nutzer/Track/Zeitstempel) werden stillschweigend übersprungen. |
+| `track.updateNowPlaying` | ja | `sk`, `artist`, `track`, `album?`, `mbid?`, `duration?`, `year?` | Setzt den "jetzt läuft"-Status. `year` ist eine optionale vierstellige Jahreszahl. |
+| `track.scrobble` | ja | `sk`, `artist`, `track`, `timestamp`, `album?`, `albumArtist?`, `mbid?`, `duration?`, `year?` (auch `artist[0]`, `track[0]`, ... für Batches bis 50 Einträge) | Trägt einen oder mehrere Scrobbles ein. `timestamp` = Unix-Zeit (Sekunden) des Songstarts. Duplikate (gleicher Nutzer/Track/Zeitstempel) werden stillschweigend übersprungen. |
 | `track.love` / `track.unlove` | ja | `sk`, `artist`, `track` | Setzt/entfernt den Love-Status eines Tracks. |
 | `user.getInfo` | – | `api_key`, `user?`, `sk?` | Infos zu einem Nutzer (`user`-Parameter) oder — mit `sk` statt `user` — zum angemeldeten Nutzer. |
 | `user.getRecentTracks` | – | `api_key`, `user`, `limit?` (max. 200, Default 50), `page?` | Scrobble-Verlauf eines Nutzers, neueste zuerst. |
@@ -178,7 +178,7 @@ Bei Fehler: `BADAUTH` (falsche Zugangsdaten) oder `FAILED <grund>`.
 POST /legacy/nowplaying
 Content-Type: application/x-www-form-urlencoded
 
-s=<session-key>&a=<artist>&t=<track>&b=<album>&l=<dauer-sekunden>&m=<mbid>
+s=<session-key>&a=<artist>&t=<track>&b=<album>&l=<dauer-sekunden>&m=<mbid>&y=<jahr>
 ```
 
 Antwort: `OK` oder `BADSESSION`.
@@ -189,7 +189,7 @@ Antwort: `OK` oder `BADSESSION`.
 POST /legacy/submit
 Content-Type: application/x-www-form-urlencoded
 
-s=<session-key>&a[0]=<artist>&t[0]=<track>&i[0]=<unix-timestamp>&b[0]=<album>&l[0]=<dauer-sekunden>&m[0]=<mbid>&...
+s=<session-key>&a[0]=<artist>&t[0]=<track>&i[0]=<unix-timestamp>&b[0]=<album>&l[0]=<dauer-sekunden>&m[0]=<mbid>&y[0]=<jahr>&...
 ```
 
 Index `[0]`, `[1]`, ... für mehrere Scrobbles in einem Request. Pflichtfelder pro Eintrag sind

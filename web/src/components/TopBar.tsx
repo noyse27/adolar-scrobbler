@@ -22,10 +22,8 @@ export default function TopBar() {
       <div className="nav-links">
         {me && (
           <>
-            <NavLink to="/" end>
-              Dashboard
-            </NavLink>
-            <NavLink to={`/u/${me.username}`}>Mein Profil</NavLink>
+            <NavLink to={`/u/${me.username}`} end>Dashboard</NavLink>
+            <NavLink to={`/u/${me.username}/stats`}>Statistiken</NavLink>
             <NavLink to={`/u/${me.username}/loved`}>Lieblingstracks</NavLink>
             <NavLink to="/leaderboard">Leaderboard</NavLink>
             <NavLink to="/settings">Einstellungen</NavLink>

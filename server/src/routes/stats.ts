@@ -7,6 +7,7 @@ import {
   getTopArtists,
   getTopAlbums,
   getTopTracks,
+  getReleaseYearStats,
   getRecentScrobbles,
   getHeatmap,
   getClock,
@@ -46,6 +47,15 @@ export default async function statsRoutes(app: FastifyInstance) {
       const user = await resolveUser(req.params.username);
       if (!user) return reply.code(404).send({ error: "not_found" });
       return getTopArtists(user.id, range(req.query), Number(req.query.limit ?? 20));
+    }
+  );
+
+  app.get<{ Params: { username: string }; Querystring: { range?: string } }>(
+    "/api/users/:username/charts/release-years",
+    async (req, reply) => {
+      const user = await resolveUser(req.params.username);
+      if (!user) return reply.code(404).send({ error: "not_found" });
+      return getReleaseYearStats(user.id, range(req.query));
     }
   );
 
@@ -96,6 +106,7 @@ export default async function statsRoutes(app: FastifyInstance) {
                 track: nowPlaying.track.name,
                 artist: nowPlaying.track.artist.name,
                 album: nowPlaying.track.album?.name ?? null,
+                year: nowPlaying.track.year,
                 startedAt: nowPlaying.startedAt,
               }
             : null,
@@ -105,6 +116,7 @@ export default async function statsRoutes(app: FastifyInstance) {
           trackId: r.trackId,
           artist: r.track.artist.name,
           album: r.track.album?.name ?? null,
+          year: r.track.year,
           playedAt: r.playedAt,
           loved: loved.has(r.trackId),
         })),
@@ -125,6 +137,7 @@ export default async function statsRoutes(app: FastifyInstance) {
       track: l.track.name,
       artist: l.track.artist.name,
       album: l.track.album?.name ?? null,
+      year: l.track.year,
       lovedAt: l.lovedAt,
     }));
   });

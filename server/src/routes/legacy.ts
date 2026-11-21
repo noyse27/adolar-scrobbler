@@ -50,6 +50,7 @@ export default async function legacyRoutes(app: FastifyInstance) {
       album: body.b,
       mbid: body.m,
       durationMs: body.l ? Number(body.l) * 1000 : undefined,
+      year: parseLegacyYear(body.y),
     });
     await prisma.nowPlaying.upsert({
       where: { userId: user.id },
@@ -82,6 +83,7 @@ export default async function legacyRoutes(app: FastifyInstance) {
         album: body[`b[${i}]`],
         mbid: body[`m[${i}]`],
         durationMs: body[`l[${i}]`] ? Number(body[`l[${i}]`]) * 1000 : undefined,
+        year: parseLegacyYear(body[`y[${i}]`]),
       });
       await prisma.scrobble
         .create({
@@ -96,4 +98,10 @@ export default async function legacyRoutes(app: FastifyInstance) {
     }
     return "OK";
   });
+}
+
+function parseLegacyYear(value: string | undefined): number | undefined {
+  if (!value || !/^\d{4}$/.test(value)) return undefined;
+  const year = Number(value);
+  return year >= 1000 && year <= new Date().getFullYear() + 1 ? year : undefined;
 }

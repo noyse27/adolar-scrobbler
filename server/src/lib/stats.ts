@@ -118,6 +118,38 @@ export async function getTopTracks(userId: string, range: Range, limit = 20) {
   }));
 }
 
+export async function getReleaseYearStats(userId: string, range: Range) {
+  const since = rangeToDate(range);
+  const rows = await prisma.$queryRawUnsafe<{ year: number; playcount: bigint }[]>(
+    `SELECT t.year, COUNT(*)::bigint as playcount
+     FROM "Scrobble" s
+     JOIN "Track" t ON t.id = s."trackId"
+     WHERE s."userId" = $1
+       AND t.year IS NOT NULL
+       ${since ? `AND s."playedAt" >= $2` : ""}
+     GROUP BY t.year
+     ORDER BY playcount DESC, t.year DESC`,
+    userId,
+    ...(since ? [since] : [])
+  );
+
+  const years = rows.map((row) => ({
+    year: row.year,
+    name: String(row.year),
+    playcount: Number(row.playcount),
+  }));
+  const decadeCounts = new Map<number, number>();
+  for (const row of years) {
+    const decade = Math.floor(row.year / 10) * 10;
+    decadeCounts.set(decade, (decadeCounts.get(decade) ?? 0) + row.playcount);
+  }
+  const decades = [...decadeCounts.entries()]
+    .map(([decade, playcount]) => ({ decade, name: `${decade}er`, playcount }))
+    .sort((a, b) => b.playcount - a.playcount || b.decade - a.decade);
+
+  return { years, decades };
+}
+
 export async function getRecentScrobbles(userId: string, limit = 30, page = 1) {
   return prisma.scrobble.findMany({
     where: { userId },
