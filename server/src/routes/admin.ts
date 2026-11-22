@@ -2,6 +2,7 @@ import { FastifyInstance } from "fastify";
 import { getCurrentUser } from "../lib/webAuth.js";
 import { prisma, getInstanceSetting, setInstanceSetting, getOrCreateAppCredentials } from "../db.js";
 import { getAllowRegistration, setAllowRegistration, createInvite } from "../lib/registration.js";
+import { config } from "../config.js";
 
 async function requireAdmin(req: any, reply: any) {
   const user = await getCurrentUser(req);
@@ -17,6 +18,11 @@ export default async function adminRoutes(app: FastifyInstance) {
     if (!(await requireAdmin(req, reply))) return;
     const lastfmApiKey = await getInstanceSetting("lastfm_api_key");
     const { apiKey, secret } = await getOrCreateAppCredentials();
+    const [enrichmentJobs, enrichedTracks, cachedCovers] = await Promise.all([
+      prisma.enrichmentJob.groupBy({ by: ["status"], _count: { _all: true } }),
+      prisma.track.count({ where: { mbid: { not: null } } }),
+      prisma.album.count({ where: { coverPath: { not: null } } }),
+    ]);
     return {
       lastfmApiKeyConfigured: Boolean(lastfmApiKey),
       appApiKey: apiKey,
@@ -27,7 +33,23 @@ export default async function adminRoutes(app: FastifyInstance) {
       // scrobble here using the signed 2.0 API.
       appSecret: secret,
       allowRegistration: await getAllowRegistration(),
+      musicBrainz: {
+        enabled: config.musicBrainzEnabled,
+        contactConfigured: Boolean(config.musicBrainzContact.trim()),
+        enrichedTracks,
+        cachedCovers,
+        jobs: Object.fromEntries(enrichmentJobs.map((row) => [row.status, row._count._all])),
+      },
     };
+  });
+
+  app.post("/api/admin/musicbrainz/retry", async (req, reply) => {
+    if (!(await requireAdmin(req, reply))) return;
+    const result = await prisma.enrichmentJob.updateMany({
+      where: { status: { in: ["FAILED", "NO_MATCH"] } },
+      data: { status: "RETRY", attempts: 0, nextAttemptAt: new Date(), lastError: null },
+    });
+    return { ok: true, queued: result.count };
   });
 
   app.post<{ Body: { lastfmApiKey: string } }>("/api/admin/settings/lastfm-key", async (req, reply) => {

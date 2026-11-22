@@ -23,4 +23,7 @@ export const config = {
   // first (admin) account. Left unset, bootstrap is unguarded (useful for
   // local development without running setup.sh).
   setupToken: process.env.SETUP_TOKEN,
+  musicBrainzEnabled: (process.env.MUSICBRAINZ_ENABLED ?? "true") === "true",
+  musicBrainzContact: process.env.MUSICBRAINZ_CONTACT ?? "",
+  coverCacheDir: process.env.COVER_CACHE_DIR ?? "./data/covers",
 };

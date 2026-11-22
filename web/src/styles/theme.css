@@ -214,6 +214,32 @@ select:focus {
   padding: 8px 0;
   border-bottom: 1px solid var(--border);
   font-size: 14px;
+  gap: 12px;
+}
+
+.track-cover {
+  width: 48px;
+  height: 48px;
+  flex: 0 0 48px;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  border-radius: 8px;
+  background: linear-gradient(135deg, rgba(110, 68, 255, 0.55), rgba(49, 213, 255, 0.22));
+  color: var(--lavender-light);
+  font-family: var(--font-display);
+  border: 1px solid var(--border);
+}
+
+.track-cover img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.track-meta {
+  min-width: 0;
+  flex: 1;
 }
 
 .track-row:last-child {

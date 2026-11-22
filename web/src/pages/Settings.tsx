@@ -160,6 +160,31 @@ function AdminPanel() {
 
       <hr style={{ border: "none", borderTop: "1px solid var(--border)", margin: "18px 0" }} />
 
+      <h3>MusicBrainz-Metadaten</h3>
+      <p className="muted">
+        Status: {settings.musicBrainz.enabled ? "✅ Hintergrund-Anreicherung aktiv" : "⏸ deaktiviert"}
+        {!settings.musicBrainz.contactConfigured && " · Kontakt in MUSICBRAINZ_CONTACT fehlt"}
+      </p>
+      <p className="muted">
+        {settings.musicBrainz.enrichedTracks} Tracks zugeordnet · {settings.musicBrainz.cachedCovers} Covers lokal gecacht
+      </p>
+      <p className="muted">
+        Wartend: {(settings.musicBrainz.jobs.PENDING ?? 0) + (settings.musicBrainz.jobs.RETRY ?? 0)} ·
+        Ohne Treffer: {settings.musicBrainz.jobs.NO_MATCH ?? 0} ·
+        Fehlgeschlagen: {settings.musicBrainz.jobs.FAILED ?? 0}
+      </p>
+      <button
+        className="btn btn-ghost"
+        onClick={async () => {
+          await api.retryMusicBrainz();
+          setSettings(await api.adminSettings());
+        }}
+      >
+        Fehlende Metadaten erneut versuchen
+      </button>
+
+      <hr style={{ border: "none", borderTop: "1px solid var(--border)", margin: "18px 0" }} />
+
       <h3>App-Zugangsdaten (für last.fm-kompatible Scrobbler-Clients)</h3>
       <p className="muted">
         Diese Instanz tritt gegenüber anderen Apps wie eine registrierte last.fm-API-Anwendung

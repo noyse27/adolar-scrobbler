@@ -13,6 +13,7 @@ import legacyRoutes from "./routes/legacy.js";
 import statsRoutes from "./routes/stats.js";
 import importRoutes from "./routes/import.js";
 import adminRoutes from "./routes/admin.js";
+import { startMusicBrainzWorker, stopMusicBrainzWorker } from "./lib/musicbrainz.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -31,6 +32,21 @@ async function main() {
   await app.register(adminRoutes);
 
   app.get("/healthz", async () => ({ ok: true }));
+  app.addHook("onClose", async () => stopMusicBrainzWorker());
+
+  app.get<{ Params: { filename: string } }>("/media/covers/:filename", async (req, reply) => {
+    if (!/^[0-9a-f-]{36}-250\.jpg$/i.test(req.params.filename)) {
+      return reply.code(404).send({ error: "not_found" });
+    }
+    const coverPath = path.resolve(config.coverCacheDir, req.params.filename);
+    const cacheRoot = path.resolve(config.coverCacheDir) + path.sep;
+    if (!coverPath.startsWith(cacheRoot) || !fs.existsSync(coverPath)) {
+      return reply.code(404).send({ error: "not_found" });
+    }
+    reply.header("Cache-Control", "public, max-age=604800, immutable");
+    reply.type("image/jpeg");
+    return reply.send(fs.createReadStream(coverPath));
+  });
 
   const webDist = path.resolve(__dirname, config.webDistPath);
   const hasWebDist = fs.existsSync(path.join(webDist, "index.html"));
@@ -51,6 +67,7 @@ async function main() {
   }
 
   await app.listen({ port: config.port, host: "0.0.0.0" });
+  await startMusicBrainzWorker();
   app.log.info(`Adolar Scrobbler listening on :${config.port}`);
 }
 

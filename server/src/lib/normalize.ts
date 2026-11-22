@@ -3,6 +3,7 @@ export function nameKey(name: string): string {
 }
 
 import { prisma } from "../db.js";
+import { enqueueTrackEnrichment } from "./musicbrainz.js";
 
 export async function findOrCreateArtist(name: string, mbid?: string) {
   const key = nameKey(name);
@@ -79,5 +80,6 @@ export async function resolveTrack(input: {
     durationMs: input.durationMs,
     year: input.year,
   });
+  await enqueueTrackEnrichment(track.id);
   return track;
 }

@@ -117,6 +117,7 @@ export default async function statsRoutes(app: FastifyInstance) {
           artist: r.track.artist.name,
           album: r.track.album?.name ?? null,
           year: r.track.year,
+          coverUrl: r.track.album?.coverPath ? `/media/covers/${r.track.album.coverPath}` : null,
           playedAt: r.playedAt,
           loved: loved.has(r.trackId),
         })),
@@ -138,6 +139,7 @@ export default async function statsRoutes(app: FastifyInstance) {
       artist: l.track.artist.name,
       album: l.track.album?.name ?? null,
       year: l.track.year,
+      coverUrl: l.track.album?.coverPath ? `/media/covers/${l.track.album.coverPath}` : null,
       lovedAt: l.lovedAt,
     }));
   });

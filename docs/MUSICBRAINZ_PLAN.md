@@ -1,5 +1,8 @@
 # MusicBrainz- und Cover-Art-Integration
 
+> Stand: Phase 1 sowie die grundlegende Cover-Pipeline aus Phase 2 sind implementiert.
+> Detailansichten, manuelle Zuordnung und Genre-Statistiken bleiben Folgearbeiten.
+
 ## Zielbild
 
 MusicBrainz ergänzt vorhandene Scrobbles nachträglich um verlässliche Künstler-, Release- und

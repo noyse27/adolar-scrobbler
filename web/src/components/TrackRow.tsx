@@ -7,6 +7,7 @@ export interface TrackRowData {
   artist: string;
   album?: string | null;
   year?: number | null;
+  coverUrl?: string | null;
   playedAt?: string;
   loved: boolean;
 }
@@ -41,6 +42,13 @@ export default function TrackRow({
 
   return (
     <div className="track-row">
+      <div className="track-cover" aria-hidden="true">
+        {data.coverUrl ? (
+          <img src={data.coverUrl} alt="" loading="lazy" width="48" height="48" />
+        ) : (
+          <span>{(data.album || data.track).trim().slice(0, 1).toUpperCase()}</span>
+        )}
+      </div>
       <div className="track-meta">
         <div className="track-name">{data.track}</div>
         <div className="artist-name">

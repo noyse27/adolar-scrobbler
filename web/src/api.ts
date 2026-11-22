@@ -77,6 +77,7 @@ export const api = {
     }),
   setAllowRegistration: (allow: boolean) =>
     request("/api/admin/settings/registration", { method: "POST", body: JSON.stringify({ allow }) }),
+  retryMusicBrainz: () => request("/api/admin/musicbrainz/retry", { method: "POST" }),
 
   invites: () => request("/api/admin/invites"),
   createInvite: (opts: { expiresInHours?: number; maxUses?: number }) =>
