@@ -10,6 +10,8 @@ const Settings = lazy(() => import("./pages/Settings"));
 const Leaderboard = lazy(() => import("./pages/Leaderboard"));
 const LovedTracks = lazy(() => import("./pages/LovedTracks"));
 const Statistics = lazy(() => import("./pages/Statistics"));
+const ArtistDetails = lazy(() => import("./pages/ArtistDetails"));
+const AlbumDetails = lazy(() => import("./pages/AlbumDetails"));
 
 function RequireAuth({ children }: { children: React.ReactNode }) {
   const { me, loading } = useAuth();
@@ -62,6 +64,14 @@ export default function App() {
               </Shell>
             </RequireAuth>
           }
+        />
+        <Route
+          path="/u/:username/artist/:artistId"
+          element={<RequireAuth><Shell><LazyPage><ArtistDetails /></LazyPage></Shell></RequireAuth>}
+        />
+        <Route
+          path="/u/:username/album/:albumId"
+          element={<RequireAuth><Shell><LazyPage><AlbumDetails /></LazyPage></Shell></RequireAuth>}
         />
         <Route
           path="/u/:username/stats"

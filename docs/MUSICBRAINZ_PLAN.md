@@ -1,7 +1,7 @@
 # MusicBrainz- und Cover-Art-Integration
 
-> Stand: Phase 1 sowie die grundlegende Cover-Pipeline aus Phase 2 sind implementiert.
-> Detailansichten, manuelle Zuordnung und Genre-Statistiken bleiben Folgearbeiten.
+> Stand: Phase 1, die Cover-Pipeline sowie Künstler-/Albumdetails, manuelle Zuordnung und
+> Genre-Statistiken sind implementiert. Erweiterte Credits und Editionen bleiben Folgearbeiten.
 
 ## Zielbild
 

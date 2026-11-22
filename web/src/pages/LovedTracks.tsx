@@ -29,12 +29,16 @@ export default function LovedTracks() {
               trackId: l.trackId,
               track: l.track,
               artist: l.artist,
+              artistId: l.artistId,
               album: l.album,
+              albumId: l.albumId,
               year: l.year,
+              coverUrl: l.coverUrl,
               playedAt: l.lovedAt,
               loved: true,
             }}
             editable={isOwn}
+            profileUsername={username}
             onLoveChange={(loved) => {
               if (!loved) setLoves((prev) => prev?.filter((x) => x.trackId !== l.trackId) ?? prev);
             }}

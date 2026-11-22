@@ -35,7 +35,7 @@ export default function Profile() {
       </div>
       <div className="card">
         <h3>Zuletzt gehört</h3>
-        {recent?.scrobbles?.map((s: any) => <TrackRow key={s.id} data={s} editable={isOwn} />)}
+        {recent?.scrobbles?.map((s: any) => <TrackRow key={s.id} data={s} editable={isOwn} profileUsername={username} />)}
       </div>
     </div>
   );

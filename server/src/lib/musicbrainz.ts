@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import fsp from "node:fs/promises";
 import path from "node:path";
+import { Prisma } from "@prisma/client";
 import { prisma } from "../db.js";
 import { config } from "../config.js";
 
@@ -45,6 +46,15 @@ interface MbRecording {
   disambiguation?: string;
   "artist-credit"?: MbArtistCredit[];
   releases?: MbRelease[];
+}
+
+interface CandidateSummary {
+  id: string;
+  title: string;
+  score: number;
+  artists: string[];
+  releases: string[];
+  disambiguation?: string;
 }
 
 function sleep(ms: number) {
@@ -97,29 +107,51 @@ function recordingMatches(recording: MbRecording, trackName: string, artistName:
   ) ?? false;
 }
 
+function summarizeCandidates(recordings: MbRecording[] = []): CandidateSummary[] {
+  return recordings.slice(0, 5).map((recording) => ({
+    id: recording.id,
+    title: recording.title,
+    score: recording.score ?? 0,
+    artists: recording["artist-credit"]?.map((credit) => credit.name) ?? [],
+    releases: [...new Set(recording.releases?.map((release) => release.title) ?? [])].slice(0, 3),
+    disambiguation: recording.disambiguation || undefined,
+  }));
+}
+
 async function findRecording(track: {
   name: string;
   mbid: string | null;
   durationMs: number | null;
   artist: { name: string };
   album: { name: string } | null;
-}): Promise<MbRecording | null> {
+}): Promise<{ recording: MbRecording | null; candidates: CandidateSummary[] }> {
   if (track.mbid && UUID.test(track.mbid)) {
     try {
-      return await musicBrainzJson<MbRecording>(
+      const recording = await musicBrainzJson<MbRecording>(
         `/recording/${track.mbid}?inc=artists+releases+release-groups&fmt=json`
       );
+      return { recording, candidates: [] };
     } catch (error) {
       if (!(error instanceof Error) || !error.message.includes("HTTP 404")) throw error;
     }
   }
 
-  const terms = [`recording:${lucene(track.name)}`, `artist:${lucene(track.artist.name)}`];
+  const baseTerms = [`recording:${lucene(track.name)}`, `artist:${lucene(track.artist.name)}`];
+  const terms = [...baseTerms];
   if (track.album?.name) terms.push(`release:${lucene(track.album.name)}`);
-  const result = await musicBrainzJson<{ recordings?: MbRecording[] }>(
+  let result = await musicBrainzJson<{ recordings?: MbRecording[] }>(
     `/recording?query=${encodeURIComponent(terms.join(" AND "))}&limit=5&fmt=json`
   );
-  return result.recordings?.find((candidate) => recordingMatches(candidate, track.name, track.artist.name)) ?? null;
+  if (!result.recordings?.length && track.album?.name) {
+    result = await musicBrainzJson<{ recordings?: MbRecording[] }>(
+      `/recording?query=${encodeURIComponent(baseTerms.join(" AND "))}&limit=5&fmt=json`
+    );
+  }
+  const candidates = result.recordings ?? [];
+  return {
+    recording: candidates.find((candidate) => recordingMatches(candidate, track.name, track.artist.name)) ?? null,
+    candidates: summarizeCandidates(candidates),
+  };
 }
 
 async function enrichArtist(credit: MbArtistCredit | undefined, artistId: string) {
@@ -182,9 +214,10 @@ async function processTrack(trackId: string) {
     where: { id: trackId },
     include: { artist: true, album: true },
   });
-  if (!track) return "DONE" as const;
-  const recording = await findRecording(track);
-  if (!recording) return "NO_MATCH" as const;
+  if (!track) return { status: "DONE" as const, candidates: [] };
+  const match = await findRecording(track);
+  if (!match.recording) return { status: "NO_MATCH" as const, candidates: match.candidates };
+  const recording = match.recording;
 
   const release = bestRelease(recording.releases, track.album?.name);
   const group = release?.["release-group"];
@@ -212,7 +245,7 @@ async function processTrack(trackId: string) {
     });
     if (group?.id) await cacheCover(group.id, track.albumId);
   }
-  return "DONE" as const;
+  return { status: "DONE" as const, candidates: [] };
 }
 
 export async function enqueueTrackEnrichment(trackId: string) {
@@ -248,10 +281,13 @@ async function runNextJob() {
     });
     if (claimed.count !== 1) return;
     try {
-      const status = candidate.targetType === "TRACK"
+      const result = candidate.targetType === "TRACK"
         ? await processTrack(candidate.targetId)
-        : "FAILED" as const;
-      await prisma.enrichmentJob.update({ where: { id: candidate.id }, data: { status } });
+        : { status: "FAILED" as const, candidates: [] };
+      await prisma.enrichmentJob.update({
+        where: { id: candidate.id },
+        data: { status: result.status, candidates: result.candidates as unknown as Prisma.InputJsonValue },
+      });
     } catch (error) {
       const attempts = candidate.attempts + 1;
       const retry = attempts < MAX_ATTEMPTS;

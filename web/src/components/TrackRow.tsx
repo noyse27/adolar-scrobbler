@@ -1,11 +1,14 @@
 import React, { useState } from "react";
 import { api } from "../api";
+import { Link } from "react-router-dom";
 
 export interface TrackRowData {
   trackId: string;
   track: string;
   artist: string;
+  artistId?: string;
   album?: string | null;
+  albumId?: string | null;
   year?: number | null;
   coverUrl?: string | null;
   playedAt?: string;
@@ -15,10 +18,12 @@ export interface TrackRowData {
 export default function TrackRow({
   data,
   editable,
+  profileUsername,
   onLoveChange,
 }: {
   data: TrackRowData;
   editable: boolean;
+  profileUsername: string;
   onLoveChange?: (loved: boolean) => void;
 }) {
   const [loved, setLoved] = useState(data.loved);
@@ -52,8 +57,9 @@ export default function TrackRow({
       <div className="track-meta">
         <div className="track-name">{data.track}</div>
         <div className="artist-name">
-          {data.artist}
-          {data.album ? ` · ${data.album}` : ""}
+          {data.artistId ? <Link to={`/u/${profileUsername}/artist/${data.artistId}`}>{data.artist}</Link> : data.artist}
+          {data.album ? " · " : ""}
+          {data.album && data.albumId ? <Link to={`/u/${profileUsername}/album/${data.albumId}`}>{data.album}</Link> : data.album}
           {data.year ? ` · ${data.year}` : ""}
         </div>
       </div>

@@ -365,6 +365,88 @@ select:focus {
   margin: 10px 0 0;
 }
 
+.detail-hero {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+}
+
+.detail-hero h2 {
+  margin: 4px 0 10px;
+  font-size: clamp(26px, 5vw, 44px);
+}
+
+.detail-kicker {
+  color: var(--cyan);
+  margin: 0;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+.detail-cover,
+.detail-monogram {
+  width: 180px;
+  height: 180px;
+  flex: 0 0 180px;
+  border-radius: 14px;
+  object-fit: cover;
+}
+
+.detail-monogram {
+  display: grid;
+  place-items: center;
+  font: 64px var(--font-display);
+  background: linear-gradient(135deg, var(--violet), rgba(49, 213, 255, 0.35));
+}
+
+.tag-list {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin: 10px 0;
+}
+
+.album-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+  gap: 14px;
+}
+
+.album-tile {
+  display: grid;
+  gap: 5px;
+  color: var(--text);
+  font-size: 13px;
+}
+
+.album-tile img,
+.album-placeholder {
+  width: 100%;
+  aspect-ratio: 1;
+  border-radius: 8px;
+  object-fit: cover;
+}
+
+.album-placeholder {
+  display: grid;
+  place-items: center;
+  background: var(--bg-elevated);
+  font: 28px var(--font-display);
+}
+
+.album-tile small { color: var(--text-dim); }
+
+.candidate-list { margin-top: 24px; }
+.candidate-job { padding: 14px 0; border-top: 1px solid var(--border); }
+.candidate-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 10px; padding: 10px; background: rgba(169,139,255,.06); border-radius: 8px; }
+
+@media (max-width: 620px) {
+  .detail-hero { align-items: flex-start; }
+  .detail-cover, .detail-monogram { width: 96px; height: 96px; flex-basis: 96px; }
+  .candidate-row { align-items: flex-start; flex-direction: column; }
+}
+
 .rocket-spin {
   animation: spin 1.1s linear infinite;
   display: inline-block;

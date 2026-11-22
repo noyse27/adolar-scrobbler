@@ -159,6 +159,10 @@ Sekunde abgefragt; Fehler werden mit Backoff wiederholt. Nicht gefundene Einträ
 nach 30 Tagen automatisch erneut geprüft. Der Admin sieht Fortschritt und Fehler unter
 „Einstellungen“.
 
+Künstler und Alben sind aus Timeline und Top-Charts anklickbar. Die Detailseiten verbinden
+MusicBrainz-Metadaten mit persönlichen Hörzahlen. Genre-Statistiken nennen ihren Abdeckungsgrad,
+und unsichere Recording-Treffer können Admins in den Einstellungen manuell zuordnen.
+
 Setze `MUSICBRAINZ_CONTACT` auf eine erreichbare Projekt- oder Kontakt-URL. Mit
 `MUSICBRAINZ_ENABLED=false` lässt sich die Integration vollständig abschalten. Cover liegen im
 Docker-Volume `cover-cache` und gehen bei einem Container-Neubau nicht verloren. Metadaten

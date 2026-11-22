@@ -124,9 +124,11 @@ function AdminPanel() {
   const [key, setKey] = useState("");
   const [saved, setSaved] = useState(false);
   const [showSecret, setShowSecret] = useState(false);
+  const [candidates, setCandidates] = useState<any[]>([]);
 
   useEffect(() => {
     api.adminSettings().then(setSettings).catch(() => setSettings(null));
+    api.musicBrainzCandidates().then(setCandidates).catch(() => setCandidates([]));
   }, []);
 
   if (!settings) return null;
@@ -182,6 +184,33 @@ function AdminPanel() {
       >
         Fehlende Metadaten erneut versuchen
       </button>
+      {candidates.length > 0 && (
+        <div className="candidate-list">
+          <h3>Unsichere Zuordnungen</h3>
+          <p className="muted">Bitte nur auswählen, wenn Titel, Künstler und Veröffentlichung zusammenpassen.</p>
+          {candidates.map((job) => (
+            <div className="candidate-job" key={job.id}>
+              <strong>{job.artist} – {job.track}</strong>
+              {job.album && <span className="muted"> · {job.album}</span>}
+              {(job.candidates ?? []).map((candidate: any) => (
+                <div className="candidate-row" key={candidate.id}>
+                  <div>
+                    <div>{candidate.artists.join(" & ")} – {candidate.title}</div>
+                    <div className="muted">
+                      {candidate.releases.join(", ") || "Keine Veröffentlichung angegeben"}
+                      {candidate.disambiguation ? ` · ${candidate.disambiguation}` : ""} · Treffer {candidate.score}%
+                    </div>
+                  </div>
+                  <button className="btn btn-ghost" onClick={async () => {
+                    await api.selectMusicBrainzCandidate(job.id, candidate.id);
+                    setCandidates((rows) => rows.filter((row) => row.id !== job.id));
+                  }}>Auswählen</button>
+                </div>
+              ))}
+            </div>
+          ))}
+        </div>
+      )}
 
       <hr style={{ border: "none", borderTop: "1px solid var(--border)", margin: "18px 0" }} />
 
