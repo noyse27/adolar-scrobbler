@@ -120,7 +120,8 @@ export async function getTopTracks(userId: string, range: Range, limit = 20) {
 
 export async function getReleaseYearStats(userId: string, range: Range) {
   const since = rangeToDate(range);
-  const rows = await prisma.$queryRawUnsafe<{ year: number; playcount: bigint }[]>(
+  const [rows, coverageRows] = await Promise.all([
+    prisma.$queryRawUnsafe<{ year: number; playcount: bigint }[]>(
     `SELECT t.year, COUNT(*)::bigint as playcount
      FROM "Scrobble" s
      JOIN "Track" t ON t.id = s."trackId"
@@ -131,7 +132,17 @@ export async function getReleaseYearStats(userId: string, range: Range) {
      ORDER BY playcount DESC, t.year DESC`,
     userId,
     ...(since ? [since] : [])
-  );
+    ),
+    prisma.$queryRawUnsafe<{ total: bigint; known: bigint }[]>(
+      `SELECT COUNT(*)::bigint as total,
+              COUNT(t.year)::bigint as known
+       FROM "Scrobble" s
+       JOIN "Track" t ON t.id = s."trackId"
+       WHERE s."userId" = $1 ${since ? `AND s."playedAt" >= $2` : ""}`,
+      userId,
+      ...(since ? [since] : [])
+    ),
+  ]);
 
   const years = rows.map((row) => ({
     year: row.year,
@@ -147,7 +158,9 @@ export async function getReleaseYearStats(userId: string, range: Range) {
     .map(([decade, playcount]) => ({ decade, name: `${decade}er`, playcount }))
     .sort((a, b) => b.playcount - a.playcount || b.decade - a.decade);
 
-  return { years, decades };
+  const total = Number(coverageRows[0]?.total ?? 0);
+  const known = Number(coverageRows[0]?.known ?? 0);
+  return { years, decades, coverage: { known, total, ratio: total > 0 ? known / total : 0 } };
 }
 
 export async function getRecentScrobbles(userId: string, limit = 30, page = 1) {
