@@ -125,9 +125,15 @@ function AdminPanel() {
   const [saved, setSaved] = useState(false);
   const [showSecret, setShowSecret] = useState(false);
   const [candidates, setCandidates] = useState<any[]>([]);
+  const [musicBrainzContact, setMusicBrainzContact] = useState("");
+  const [musicBrainzContactSaved, setMusicBrainzContactSaved] = useState(false);
+  const [musicBrainzContactError, setMusicBrainzContactError] = useState<string | null>(null);
 
   useEffect(() => {
-    api.adminSettings().then(setSettings).catch(() => setSettings(null));
+    api.adminSettings().then((value: any) => {
+      setSettings(value);
+      setMusicBrainzContact(value.musicBrainz.contact ?? "");
+    }).catch(() => setSettings(null));
     api.musicBrainzCandidates().then(setCandidates).catch(() => setCandidates([]));
   }, []);
 
@@ -165,8 +171,37 @@ function AdminPanel() {
       <h3>MusicBrainz-Metadaten</h3>
       <p className="muted">
         Status: {settings.musicBrainz.enabled ? "✅ Hintergrund-Anreicherung aktiv" : "⏸ deaktiviert"}
-        {!settings.musicBrainz.contactConfigured && " · Kontakt in MUSICBRAINZ_CONTACT fehlt"}
+        {!settings.musicBrainz.contactConfigured && " · Kontakt fehlt"}
       </p>
+      <p className="muted">
+        Eine HTTPS-Kontaktseite oder E-Mail-Adresse wird ausschließlich im User-Agent an
+        MusicBrainz übertragen. Eine Projekt-URL ist aus Datenschutzgründen empfehlenswert.
+      </p>
+      <div className="row" style={{ marginBottom: 12, flexWrap: "wrap" }}>
+        <input
+          type="text"
+          style={{ minWidth: 300, flex: 1 }}
+          placeholder="https://example.com/kontakt oder admin@example.com"
+          value={musicBrainzContact}
+          onChange={(event) => {
+            setMusicBrainzContact(event.target.value);
+            setMusicBrainzContactSaved(false);
+            setMusicBrainzContactError(null);
+          }}
+        />
+        <button className="btn" disabled={!musicBrainzContact.trim()} onClick={async () => {
+          try {
+            await api.setMusicBrainzContact(musicBrainzContact);
+            setMusicBrainzContactSaved(true);
+            setMusicBrainzContactError(null);
+            setSettings(await api.adminSettings());
+          } catch {
+            setMusicBrainzContactError("Bitte eine gültige E-Mail-Adresse oder HTTPS-URL eingeben.");
+          }
+        }}>Kontakt speichern</button>
+      </div>
+      {musicBrainzContactSaved && <p className="muted">MusicBrainz-Kontakt gespeichert.</p>}
+      {musicBrainzContactError && <p className="error-text">{musicBrainzContactError}</p>}
       <p className="muted">
         {settings.musicBrainz.enrichedTracks} Tracks zugeordnet · {settings.musicBrainz.cachedCovers} Covers lokal gecacht
       </p>

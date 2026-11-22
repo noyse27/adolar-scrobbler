@@ -3,6 +3,7 @@ import { getCurrentUser } from "../lib/webAuth.js";
 import { prisma, getInstanceSetting, setInstanceSetting, getOrCreateAppCredentials } from "../db.js";
 import { getAllowRegistration, setAllowRegistration, createInvite } from "../lib/registration.js";
 import { config } from "../config.js";
+import { applyMusicBrainzContact, isValidMusicBrainzContact } from "../lib/musicbrainz.js";
 
 const MUSICBRAINZ_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
@@ -19,6 +20,8 @@ export default async function adminRoutes(app: FastifyInstance) {
   app.get("/api/admin/settings", async (req, reply) => {
     if (!(await requireAdmin(req, reply))) return;
     const lastfmApiKey = await getInstanceSetting("lastfm_api_key");
+    const savedMusicBrainzContact = await getInstanceSetting("musicbrainz_contact");
+    const musicBrainzContact = savedMusicBrainzContact ?? config.musicBrainzContact.trim();
     const { apiKey, secret } = await getOrCreateAppCredentials();
     const [enrichmentJobs, enrichedTracks, cachedCovers] = await Promise.all([
       prisma.enrichmentJob.groupBy({ by: ["status"], _count: { _all: true } }),
@@ -37,12 +40,24 @@ export default async function adminRoutes(app: FastifyInstance) {
       allowRegistration: await getAllowRegistration(),
       musicBrainz: {
         enabled: config.musicBrainzEnabled,
-        contactConfigured: Boolean(config.musicBrainzContact.trim()),
+        contact: musicBrainzContact,
+        contactConfigured: Boolean(musicBrainzContact),
         enrichedTracks,
         cachedCovers,
         jobs: Object.fromEntries(enrichmentJobs.map((row) => [row.status, row._count._all])),
       },
     };
+  });
+
+  app.post<{ Body: { contact?: string } }>("/api/admin/settings/musicbrainz-contact", async (req, reply) => {
+    if (!(await requireAdmin(req, reply))) return;
+    const contact = req.body?.contact?.trim() ?? "";
+    if (!isValidMusicBrainzContact(contact)) {
+      return reply.code(400).send({ error: "invalid_musicbrainz_contact" });
+    }
+    await setInstanceSetting("musicbrainz_contact", contact);
+    applyMusicBrainzContact(contact);
+    return { ok: true };
   });
 
   app.post("/api/admin/musicbrainz/retry", async (req, reply) => {

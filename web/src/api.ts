@@ -84,6 +84,11 @@ export const api = {
   setAllowRegistration: (allow: boolean) =>
     request("/api/admin/settings/registration", { method: "POST", body: JSON.stringify({ allow }) }),
   retryMusicBrainz: () => request("/api/admin/musicbrainz/retry", { method: "POST" }),
+  setMusicBrainzContact: (contact: string) =>
+    request("/api/admin/settings/musicbrainz-contact", {
+      method: "POST",
+      body: JSON.stringify({ contact }),
+    }),
   musicBrainzCandidates: () => request("/api/admin/musicbrainz/candidates"),
   selectMusicBrainzCandidate: (jobId: string, recordingMbid: string) =>
     request(`/api/admin/musicbrainz/jobs/${jobId}/select`, {

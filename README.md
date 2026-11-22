@@ -163,7 +163,9 @@ Künstler und Alben sind aus Timeline und Top-Charts anklickbar. Die Detailseite
 MusicBrainz-Metadaten mit persönlichen Hörzahlen. Genre-Statistiken nennen ihren Abdeckungsgrad,
 und unsichere Recording-Treffer können Admins in den Einstellungen manuell zuordnen.
 
-Setze `MUSICBRAINZ_CONTACT` auf eine erreichbare Projekt- oder Kontakt-URL. Mit
+Der MusicBrainz-Kontakt lässt sich als Admin unter „Einstellungen“ ohne Neustart als
+HTTPS-Projektseite oder E-Mail-Adresse hinterlegen. `MUSICBRAINZ_CONTACT` dient lediglich als
+optionaler Startwert/Fallback. Mit
 `MUSICBRAINZ_ENABLED=false` lässt sich die Integration vollständig abschalten. Cover liegen im
 Docker-Volume `cover-cache` und gehen bei einem Container-Neubau nicht verloren. Metadaten
 stammen von [MusicBrainz](https://musicbrainz.org/), Cover vom

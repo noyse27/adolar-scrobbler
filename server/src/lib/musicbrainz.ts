@@ -2,7 +2,7 @@ import fs from "node:fs";
 import fsp from "node:fs/promises";
 import path from "node:path";
 import { Prisma } from "@prisma/client";
-import { prisma } from "../db.js";
+import { getInstanceSetting, prisma } from "../db.js";
 import { config } from "../config.js";
 
 const MB_BASE = "https://musicbrainz.org/ws/2";
@@ -13,6 +13,7 @@ const MAX_ATTEMPTS = 6;
 let lastMusicBrainzRequestAt = 0;
 let workerTimer: NodeJS.Timeout | null = null;
 let workerBusy = false;
+let runtimeContact = config.musicBrainzContact.trim();
 
 function normalizedName(name: string) {
   return name.trim().toLowerCase().normalize("NFKC");
@@ -20,7 +21,12 @@ function normalizedName(name: string) {
 
 interface MbArtistCredit {
   name: string;
-  artist: { id: string; name: string; "sort-name"?: string; disambiguation?: string };
+  artist: {
+    id: string;
+    name: string;
+    "sort-name"?: string;
+    disambiguation?: string;
+  };
 }
 
 interface MbReleaseGroup {
@@ -62,8 +68,24 @@ function sleep(ms: number) {
 }
 
 function userAgent() {
-  const contact = config.musicBrainzContact.trim();
-  return `AdolarScrobbler/0.1.1${contact ? ` (${contact})` : ""}`;
+  const contact = runtimeContact;
+  return `AdolarScrobbler/0.2.0${contact ? ` (${contact})` : ""}`;
+}
+
+export function isValidMusicBrainzContact(value: string) {
+  const contact = value.trim();
+  if (!contact || contact.length > 300 || /[\r\n]/.test(contact)) return false;
+  if (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(contact)) return true;
+  try {
+    const url = new URL(contact);
+    return url.protocol === "https:" && Boolean(url.hostname);
+  } catch {
+    return false;
+  }
+}
+
+export function applyMusicBrainzContact(value: string) {
+  runtimeContact = value.trim();
 }
 
 async function fetchWithTimeout(url: string, init: RequestInit = {}) {
@@ -105,7 +127,7 @@ async function musicBrainzJson<T>(endpoint: string): Promise<T> {
   if (wait) await sleep(wait);
   lastMusicBrainzRequestAt = Date.now();
   const response = await fetchWithTimeout(`${MB_BASE}${endpoint}`, {
-    headers: { Accept: "application/json", "User-Agent": userAgent() },
+    headers: { Accept: "application/json", "User-Agent": userAgent() }
   });
   if (!response.ok) throw new Error(`MusicBrainz HTTP ${response.status}`);
   return response.json() as Promise<T>;
@@ -126,9 +148,7 @@ function bestRelease(releases: MbRelease[] | undefined, albumName?: string | nul
 
 function recordingMatches(recording: MbRecording, trackName: string, artistName: string) {
   if ((recording.score ?? 0) < 90 || normalizedName(recording.title) !== normalizedName(trackName)) return false;
-  return recording["artist-credit"]?.some((credit) =>
-    normalizedName(credit.artist.name) === normalizedName(artistName) || normalizedName(credit.name) === normalizedName(artistName)
-  ) ?? false;
+  return recording["artist-credit"]?.some((credit) => normalizedName(credit.artist.name) === normalizedName(artistName) || normalizedName(credit.name) === normalizedName(artistName)) ?? false;
 }
 
 function summarizeCandidates(recordings: MbRecording[] = []): CandidateSummary[] {
@@ -139,7 +159,7 @@ function summarizeCandidates(recordings: MbRecording[] = []): CandidateSummary[]
     score: recording.score ?? 0,
     artists: recording["artist-credit"]?.map((credit) => safe(credit.name)) ?? [],
     releases: [...new Set(recording.releases?.map((release) => safe(release.title)) ?? [])].slice(0, 3),
-    disambiguation: recording.disambiguation ? safe(recording.disambiguation) : undefined,
+    disambiguation: recording.disambiguation ? safe(recording.disambiguation) : undefined
   }));
 }
 
@@ -152,9 +172,7 @@ async function findRecording(track: {
 }): Promise<{ recording: MbRecording | null; candidates: CandidateSummary[] }> {
   if (track.mbid && UUID.test(track.mbid)) {
     try {
-      const recording = await musicBrainzJson<MbRecording>(
-        `/recording/${track.mbid}?inc=artists+releases+release-groups&fmt=json`
-      );
+      const recording = await musicBrainzJson<MbRecording>(`/recording/${track.mbid}?inc=artists+releases+release-groups&fmt=json`);
       return { recording, candidates: [] };
     } catch (error) {
       if (!(error instanceof Error) || !error.message.includes("HTTP 404")) throw error;
@@ -164,18 +182,14 @@ async function findRecording(track: {
   const baseTerms = [`recording:${lucene(track.name)}`, `artist:${lucene(track.artist.name)}`];
   const terms = [...baseTerms];
   if (track.album?.name) terms.push(`release:${lucene(track.album.name)}`);
-  let result = await musicBrainzJson<{ recordings?: MbRecording[] }>(
-    `/recording?query=${encodeURIComponent(terms.join(" AND "))}&limit=5&fmt=json`
-  );
+  let result = await musicBrainzJson<{ recordings?: MbRecording[] }>(`/recording?query=${encodeURIComponent(terms.join(" AND "))}&limit=5&fmt=json`);
   if (!result.recordings?.length && track.album?.name) {
-    result = await musicBrainzJson<{ recordings?: MbRecording[] }>(
-      `/recording?query=${encodeURIComponent(baseTerms.join(" AND "))}&limit=5&fmt=json`
-    );
+    result = await musicBrainzJson<{ recordings?: MbRecording[] }>(`/recording?query=${encodeURIComponent(baseTerms.join(" AND "))}&limit=5&fmt=json`);
   }
   const candidates = result.recordings ?? [];
   return {
     recording: candidates.find((candidate) => recordingMatches(candidate, track.name, track.artist.name)) ?? null,
-    candidates: summarizeCandidates(candidates),
+    candidates: summarizeCandidates(candidates)
   };
 }
 
@@ -198,8 +212,8 @@ async function enrichArtist(credit: MbArtistCredit | undefined, artistId: string
       disambiguation: details.disambiguation || null,
       beginDate: details["life-span"]?.begin ?? null,
       endDate: details["life-span"]?.end ?? null,
-      genres,
-    },
+      genres
+    }
   });
 }
 
@@ -211,10 +225,13 @@ async function cacheCover(releaseGroupMbid: string, albumId: string) {
   try {
     const response = await fetchWithTimeout(`${CAA_BASE}/release-group/${releaseGroupMbid}/front-250`, {
       headers: { "User-Agent": userAgent() },
-      redirect: "follow",
+      redirect: "follow"
     });
     if (response.status === 404) {
-      await prisma.album.update({ where: { id: albumId }, data: { coverCheckedAt: new Date() } });
+      await prisma.album.update({
+        where: { id: albumId },
+        data: { coverCheckedAt: new Date() }
+      });
       return;
     }
     if (!response.ok) throw new Error(`Cover Art Archive HTTP ${response.status}`);
@@ -230,7 +247,7 @@ async function cacheCover(releaseGroupMbid: string, albumId: string) {
     await fsp.rename(temporary, target);
     await prisma.album.update({
       where: { id: albumId },
-      data: { coverPath: filename, coverCheckedAt: new Date() },
+      data: { coverPath: filename, coverCheckedAt: new Date() }
     });
   } catch (error) {
     if (fs.existsSync(target)) return;
@@ -241,7 +258,7 @@ async function cacheCover(releaseGroupMbid: string, albumId: string) {
 async function processTrack(trackId: string) {
   const track = await prisma.track.findUnique({
     where: { id: trackId },
-    include: { artist: true, album: true },
+    include: { artist: true, album: true }
   });
   if (!track) return { status: "DONE" as const, candidates: [] };
   const match = await findRecording(track);
@@ -256,8 +273,8 @@ async function processTrack(trackId: string) {
       mbid: recording.id,
       durationMs: track.durationMs ?? recording.length ?? undefined,
       artistCredits: recording["artist-credit"]?.map((credit) => credit.name) ?? [],
-      artistCreditMbids: recording["artist-credit"]?.map((credit) => credit.artist.id) ?? [],
-    },
+      artistCreditMbids: recording["artist-credit"]?.map((credit) => credit.artist.id) ?? []
+    }
   });
   await enrichArtist(recording["artist-credit"]?.[0], track.artistId);
 
@@ -269,8 +286,8 @@ async function processTrack(trackId: string) {
         releaseGroupMbid: group?.id,
         primaryType: group?.["primary-type"],
         secondaryTypes: group?.["secondary-types"] ?? [],
-        firstReleaseDate: group?.["first-release-date"] ?? release.date,
-      },
+        firstReleaseDate: group?.["first-release-date"] ?? release.date
+      }
     });
     if (group?.id) await cacheCover(group.id, track.albumId);
   }
@@ -282,7 +299,7 @@ export async function enqueueTrackEnrichment(trackId: string) {
   await prisma.enrichmentJob.upsert({
     where: { targetType_targetId: { targetType: "TRACK", targetId: trackId } },
     update: {},
-    create: { targetType: "TRACK", targetId: trackId },
+    create: { targetType: "TRACK", targetId: trackId }
   });
 }
 
@@ -300,22 +317,26 @@ async function runNextJob() {
   workerBusy = true;
   try {
     const candidate = await prisma.enrichmentJob.findFirst({
-      where: { status: { in: ["PENDING", "RETRY"] }, nextAttemptAt: { lte: new Date() } },
-      orderBy: { createdAt: "asc" },
+      where: {
+        status: { in: ["PENDING", "RETRY"] },
+        nextAttemptAt: { lte: new Date() }
+      },
+      orderBy: { createdAt: "asc" }
     });
     if (!candidate) return;
     const claimed = await prisma.enrichmentJob.updateMany({
       where: { id: candidate.id, status: { in: ["PENDING", "RETRY"] } },
-      data: { status: "RUNNING", attempts: { increment: 1 }, lastError: null },
+      data: { status: "RUNNING", attempts: { increment: 1 }, lastError: null }
     });
     if (claimed.count !== 1) return;
     try {
-      const result = candidate.targetType === "TRACK"
-        ? await processTrack(candidate.targetId)
-        : { status: "FAILED" as const, candidates: [] };
+      const result = candidate.targetType === "TRACK" ? await processTrack(candidate.targetId) : { status: "FAILED" as const, candidates: [] };
       await prisma.enrichmentJob.update({
         where: { id: candidate.id },
-        data: { status: result.status, candidates: result.candidates as unknown as Prisma.InputJsonValue },
+        data: {
+          status: result.status,
+          candidates: result.candidates as unknown as Prisma.InputJsonValue
+        }
       });
     } catch (error) {
       const attempts = candidate.attempts + 1;
@@ -326,8 +347,8 @@ async function runNextJob() {
         data: {
           status: retry ? "RETRY" : "FAILED",
           nextAttemptAt: new Date(Date.now() + delayMinutes * 60_000),
-          lastError: error instanceof Error ? error.message.slice(0, 500) : "Unknown enrichment error",
-        },
+          lastError: error instanceof Error ? error.message.slice(0, 500) : "Unknown enrichment error"
+        }
       });
     }
   } finally {
@@ -337,13 +358,18 @@ async function runNextJob() {
 
 export async function startMusicBrainzWorker() {
   if (!config.musicBrainzEnabled || workerTimer) return;
-  await prisma.enrichmentJob.updateMany({ where: { status: "RUNNING" }, data: { status: "RETRY" } });
+  const savedContact = await getInstanceSetting("musicbrainz_contact");
+  applyMusicBrainzContact(savedContact ?? config.musicBrainzContact);
+  await prisma.enrichmentJob.updateMany({
+    where: { status: "RUNNING" },
+    data: { status: "RETRY" }
+  });
   await prisma.enrichmentJob.updateMany({
     where: {
       status: "NO_MATCH",
-      updatedAt: { lt: new Date(Date.now() - 30 * 86400000) },
+      updatedAt: { lt: new Date(Date.now() - 30 * 86400000) }
     },
-    data: { status: "RETRY", nextAttemptAt: new Date() },
+    data: { status: "RETRY", nextAttemptAt: new Date() }
   });
   await enqueueExistingTracks();
   workerTimer = setInterval(() => void runNextJob(), 2_000);
