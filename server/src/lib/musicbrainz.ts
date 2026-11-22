@@ -76,6 +76,30 @@ async function fetchWithTimeout(url: string, init: RequestInit = {}) {
   }
 }
 
+async function readLimitedBody(response: Response, maxBytes: number): Promise<Buffer> {
+  const declaredLength = Number(response.headers.get("content-length") ?? 0);
+  if (declaredLength > maxBytes) throw new Error(`Response exceeds ${maxBytes} byte limit`);
+  if (!response.body) throw new Error("Response has no body");
+  const reader = response.body.getReader();
+  const chunks: Uint8Array[] = [];
+  let total = 0;
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      total += value.byteLength;
+      if (total > maxBytes) {
+        await reader.cancel("response too large");
+        throw new Error(`Response exceeds ${maxBytes} byte limit`);
+      }
+      chunks.push(value);
+    }
+  } finally {
+    reader.releaseLock();
+  }
+  return Buffer.concat(chunks, total);
+}
+
 async function musicBrainzJson<T>(endpoint: string): Promise<T> {
   const wait = Math.max(0, 1_100 - (Date.now() - lastMusicBrainzRequestAt));
   if (wait) await sleep(wait);
@@ -108,13 +132,14 @@ function recordingMatches(recording: MbRecording, trackName: string, artistName:
 }
 
 function summarizeCandidates(recordings: MbRecording[] = []): CandidateSummary[] {
+  const safe = (value: unknown, max = 300) => String(value ?? "").slice(0, max);
   return recordings.slice(0, 5).map((recording) => ({
     id: recording.id,
-    title: recording.title,
+    title: safe(recording.title),
     score: recording.score ?? 0,
-    artists: recording["artist-credit"]?.map((credit) => credit.name) ?? [],
-    releases: [...new Set(recording.releases?.map((release) => release.title) ?? [])].slice(0, 3),
-    disambiguation: recording.disambiguation || undefined,
+    artists: recording["artist-credit"]?.map((credit) => safe(credit.name)) ?? [],
+    releases: [...new Set(recording.releases?.map((release) => safe(release.title)) ?? [])].slice(0, 3),
+    disambiguation: recording.disambiguation ? safe(recording.disambiguation) : undefined,
   }));
 }
 
@@ -193,8 +218,12 @@ async function cacheCover(releaseGroupMbid: string, albumId: string) {
       return;
     }
     if (!response.ok) throw new Error(`Cover Art Archive HTTP ${response.status}`);
-    const bytes = Buffer.from(await response.arrayBuffer());
-    if (bytes.length > 2_000_000) throw new Error("Cover exceeds 2 MB limit");
+    const contentType = response.headers.get("content-type")?.toLowerCase() ?? "";
+    if (!contentType.startsWith("image/")) throw new Error("Cover response is not an image");
+    const bytes = await readLimitedBody(response, 2_000_000);
+    if (bytes[0] !== 0xff || bytes[1] !== 0xd8 || bytes[bytes.length - 2] !== 0xff || bytes[bytes.length - 1] !== 0xd9) {
+      throw new Error("Cover response is not a valid JPEG");
+    }
     await fsp.mkdir(path.dirname(target), { recursive: true });
     const temporary = `${target}.${process.pid}.tmp`;
     await fsp.writeFile(temporary, bytes);

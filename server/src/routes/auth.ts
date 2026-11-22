@@ -61,6 +61,7 @@ export default async function authRoutes(app: FastifyInstance) {
     const token = signWebToken(user.id);
     reply.setCookie("adolar_session", token, {
       httpOnly: true,
+      secure: config.publicUrl.startsWith("https://"),
       sameSite: "lax",
       path: "/",
       maxAge: 60 * 60 * 24 * 30,
@@ -79,6 +80,7 @@ export default async function authRoutes(app: FastifyInstance) {
       const token = signWebToken(user.id);
       reply.setCookie("adolar_session", token, {
         httpOnly: true,
+        secure: config.publicUrl.startsWith("https://"),
         sameSite: "lax",
         path: "/",
         maxAge: 60 * 60 * 24 * 30,

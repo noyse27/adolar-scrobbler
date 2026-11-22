@@ -1,5 +1,11 @@
+const MAX_MUSIC_NAME_LENGTH = 500;
+
+function cleanName(name: string): string {
+  return name.trim().slice(0, MAX_MUSIC_NAME_LENGTH);
+}
+
 export function nameKey(name: string): string {
-  return name.trim().toLowerCase().normalize("NFKC");
+  return cleanName(name).toLowerCase().normalize("NFKC");
 }
 
 import { prisma } from "../db.js";
@@ -9,7 +15,7 @@ export async function findOrCreateArtist(name: string, mbid?: string) {
   const key = nameKey(name);
   const existing = await prisma.artist.findUnique({ where: { nameKey: key } });
   if (existing) return existing;
-  return prisma.artist.create({ data: { name: name.trim(), nameKey: key, mbid } });
+  return prisma.artist.create({ data: { name: cleanName(name), nameKey: key, mbid } });
 }
 
 export async function findOrCreateAlbum(artistId: string, name: string, mbid?: string) {
@@ -18,7 +24,7 @@ export async function findOrCreateAlbum(artistId: string, name: string, mbid?: s
     where: { artistId_nameKey: { artistId, nameKey: key } },
   });
   if (existing) return existing;
-  return prisma.album.create({ data: { artistId, name: name.trim(), nameKey: key, mbid } });
+  return prisma.album.create({ data: { artistId, name: cleanName(name), nameKey: key, mbid } });
 }
 
 export async function findOrCreateTrack(
@@ -48,7 +54,7 @@ export async function findOrCreateTrack(
   return prisma.track.create({
     data: {
       artistId,
-      name: name.trim(),
+      name: cleanName(name),
       nameKey: key,
       albumId: opts.albumId,
       mbid: opts.mbid,

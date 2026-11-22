@@ -23,6 +23,11 @@ import {
 
 const RANGES: Range[] = ["7d", "30d", "90d", "365d", "all"];
 
+function boundedInt(value: string | undefined, fallback: number, min: number, max: number) {
+  const parsed = Number(value);
+  return Number.isInteger(parsed) ? Math.min(max, Math.max(min, parsed)) : fallback;
+}
+
 export default async function statsRoutes(app: FastifyInstance) {
   async function resolveUser(username: string) {
     return prisma.user.findUnique({ where: { username } });
@@ -47,7 +52,7 @@ export default async function statsRoutes(app: FastifyInstance) {
     async (req, reply) => {
       const user = await resolveUser(req.params.username);
       if (!user) return reply.code(404).send({ error: "not_found" });
-      return getTopArtists(user.id, range(req.query), Number(req.query.limit ?? 20));
+      return getTopArtists(user.id, range(req.query), boundedInt(req.query.limit, 20, 1, 100));
     }
   );
 
@@ -65,7 +70,7 @@ export default async function statsRoutes(app: FastifyInstance) {
     async (req, reply) => {
       const user = await resolveUser(req.params.username);
       if (!user) return reply.code(404).send({ error: "not_found" });
-      return getTopAlbums(user.id, range(req.query), Number(req.query.limit ?? 20));
+      return getTopAlbums(user.id, range(req.query), boundedInt(req.query.limit, 20, 1, 100));
     }
   );
 
@@ -74,7 +79,7 @@ export default async function statsRoutes(app: FastifyInstance) {
     async (req, reply) => {
       const user = await resolveUser(req.params.username);
       if (!user) return reply.code(404).send({ error: "not_found" });
-      return getTopTracks(user.id, range(req.query), Number(req.query.limit ?? 20));
+      return getTopTracks(user.id, range(req.query), boundedInt(req.query.limit, 20, 1, 100));
     }
   );
 
@@ -85,8 +90,8 @@ export default async function statsRoutes(app: FastifyInstance) {
       if (!user) return reply.code(404).send({ error: "not_found" });
       const rows = await getRecentScrobbles(
         user.id,
-        Number(req.query.limit ?? 30),
-        Number(req.query.page ?? 1)
+        boundedInt(req.query.limit, 30, 1, 200),
+        boundedInt(req.query.page, 1, 1, 100_000)
       );
       const loved = new Set(
         (
@@ -154,7 +159,7 @@ export default async function statsRoutes(app: FastifyInstance) {
     async (req, reply) => {
       const user = await resolveUser(req.params.username);
       if (!user) return reply.code(404).send({ error: "not_found" });
-      return getHeatmap(user.id, Number(req.query.year ?? new Date().getFullYear()));
+      return getHeatmap(user.id, boundedInt(req.query.year, new Date().getFullYear(), 1970, 2200));
     }
   );
 

@@ -21,7 +21,17 @@ async function main() {
   const app = Fastify({ logger: true });
 
   await app.register(cookie, { secret: config.cookieSecret });
-  await app.register(cors, { origin: true, credentials: true });
+  const publicOrigin = new URL(config.publicUrl).origin;
+  await app.register(cors, {
+    credentials: true,
+    origin(origin, callback) {
+      if (!origin || origin === publicOrigin) return callback(null, true);
+      if (process.env.NODE_ENV !== "production" && /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin)) {
+        return callback(null, true);
+      }
+      return callback(null, false);
+    },
+  });
   await app.register(formbody);
 
   await app.register(authRoutes);
@@ -44,6 +54,8 @@ async function main() {
       return reply.code(404).send({ error: "not_found" });
     }
     reply.header("Cache-Control", "public, max-age=604800, immutable");
+    reply.header("X-Content-Type-Options", "nosniff");
+    reply.header("Content-Security-Policy", "default-src 'none'");
     reply.type("image/jpeg");
     return reply.send(fs.createReadStream(coverPath));
   });
