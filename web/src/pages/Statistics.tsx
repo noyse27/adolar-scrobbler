@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { api } from "../api";
 import Heatmap from "../components/Heatmap";
-import ListeningClock from "../components/ListeningClock";
+import ListeningClock, { WeekdayChart } from "../components/ListeningClock";
 import RangeTabs from "../components/RangeTabs";
 import TopChart from "../components/TopChart";
 
@@ -19,7 +19,11 @@ export default function Statistics() {
   const [artists, setArtists] = useState<any[]>([]);
   const [albums, setAlbums] = useState<any[]>([]);
   const [tracks, setTracks] = useState<any[]>([]);
-  const [releaseYears, setReleaseYears] = useState<{ years: any[]; decades: any[] }>({ years: [], decades: [] });
+  const [releaseYears, setReleaseYears] = useState<{
+    years: any[];
+    decades: any[];
+    coverage?: { known: number; total: number; ratio: number };
+  }>({ years: [], decades: [] });
   const [heatmap, setHeatmap] = useState<any[]>([]);
   const [clock, setClock] = useState<{ hourly: any[]; weekly: any[] } | null>(null);
   const [wild, setWild] = useState<any>(null);
@@ -44,6 +48,8 @@ export default function Statistics() {
   }, [username, year]);
 
   if (!username) return null;
+  const discovery = discoverySummary(wild?.discovery);
+  const insights = buildInsights(overview, wild, clock);
   return (
     <div className="grid" style={{ gap: 24 }}>
       <div className="row profile-heading">
@@ -57,7 +63,16 @@ export default function Statistics() {
             [overview.uniqueTracks, "Tracks"], [overview.uniqueAlbums, "Alben"],
             [formatMs(overview.estimatedListeningMs), "Geschätzte Hörzeit"],
             [wild?.streaks.currentStreak ?? 0, "Streak (Tage)"],
+            [discovery.current, "Neue Künstler diesen Monat"],
           ].map(([value, label]) => <StatCard key={String(label)} value={value} label={String(label)} card />)}
+        </div>
+      )}
+      {insights.length > 0 && (
+        <div className="card insight-card">
+          <h3>Dein Hörprofil auf einen Blick</h3>
+          <div className="insight-list">
+            {insights.map((insight) => <p key={insight}>{insight}</p>)}
+          </div>
         </div>
       )}
       <div className="grid grid-2">
@@ -65,8 +80,9 @@ export default function Statistics() {
         <Chart title="Top Tracks" data={tracks} />
         <Chart title="Top Alben" data={albums} />
         <div className="card"><h3>Hör-Uhr (Stunde des Tages)</h3>{clock && <ListeningClock hourly={clock.hourly} />}</div>
-        <Chart title="Meistgehörte Jahrgänge" data={releaseYears.years.slice(0, 15)} />
-        <Chart title="Meistgehörte Jahrzehnte" data={releaseYears.decades} />
+        <div className="card"><h3>Hörtage</h3>{clock && <WeekdayChart weekly={clock.weekly} />}</div>
+        <Chart title="Meistgehörte Jahrgänge" data={releaseYears.years.slice(0, 15)} note={coverageNote(releaseYears.coverage)} />
+        <Chart title="Meistgehörte Jahrzehnte" data={releaseYears.decades} note={coverageNote(releaseYears.coverage)} />
       </div>
       <div className="card"><h3>Scrobble-Kalender {year}</h3><Heatmap days={heatmap} year={year} /></div>
       {wild && (
@@ -94,10 +110,37 @@ export default function Statistics() {
   );
 }
 
-function Chart({ title, data }: { title: string; data: any[] }) {
-  return <div className="card"><h3>{title}</h3><TopChart data={data} /></div>;
+function Chart({ title, data, note }: { title: string; data: any[]; note?: string }) {
+  return <div className="card"><h3>{title}</h3><TopChart data={data} />{note && <p className="chart-note">{note}</p>}</div>;
 }
 
 function StatCard({ value, label, card = false }: { value: React.ReactNode; label: string; card?: boolean }) {
   return <div className={`${card ? "card " : ""}stat-tile`}><div className="value">{value}</div><div className="label">{label}</div></div>;
+}
+
+function discoverySummary(rows?: { month: string; newArtists: number }[]) {
+  const now = new Date();
+  const key = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+  return { current: rows?.find((row) => row.month === key)?.newArtists ?? 0 };
+}
+
+function buildInsights(overview: any, wild: any, clock: { hourly: any[]; weekly: any[] } | null): string[] {
+  const insights: string[] = [];
+  if (overview?.totalScrobbles > 0 && wild?.share) {
+    insights.push(`Deine zehn meistgehörten Künstler machen ${Math.round(wild.share.top10 * 100)} % deiner Scrobbles aus.`);
+  }
+  const busiestHour = clock?.hourly.reduce((best, hour) => hour.count > best.count ? hour : best, { hour: 0, count: 0 });
+  if (busiestHour?.count > 0) {
+    insights.push(`Am häufigsten hörst du zwischen ${busiestHour.hour}:00 und ${(busiestHour.hour + 1) % 24}:00 Uhr.`);
+  }
+  const discovery = discoverySummary(wild?.discovery);
+  if (discovery.current > 0) {
+    insights.push(`Diesen Monat hast du ${discovery.current} neue Künstler entdeckt.`);
+  }
+  return insights.slice(0, 3);
+}
+
+function coverageNote(coverage?: { known: number; total: number; ratio: number }): string | undefined {
+  if (!coverage || coverage.total === 0) return undefined;
+  return `Erscheinungsjahr für ${Math.round(coverage.ratio * 100)} % der Scrobbles bekannt (${coverage.known.toLocaleString("de-DE")} von ${coverage.total.toLocaleString("de-DE")}).`;
 }
