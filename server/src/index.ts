@@ -3,6 +3,7 @@ import cookie from "@fastify/cookie";
 import cors from "@fastify/cors";
 import formbody from "@fastify/formbody";
 import staticPlugin from "@fastify/static";
+import rateLimit from "@fastify/rate-limit";
 import path from "node:path";
 import fs from "node:fs";
 import { fileURLToPath } from "node:url";
@@ -33,6 +34,11 @@ async function main() {
     },
   });
   await app.register(formbody);
+  await app.register(rateLimit, {
+    global: true,
+    max: 600,
+    timeWindow: "1 minute",
+  });
 
   await app.register(authRoutes);
   await app.register(lastfm2Routes);
