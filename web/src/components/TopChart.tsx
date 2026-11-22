@@ -9,7 +9,7 @@ interface Row {
 
 const COLORS = ["#31d5ff", "#6e44ff", "#a98bff", "#ff9500", "#ffd35a"];
 
-export default function TopChart({ data }: { data: Row[] }) {
+export default function TopChart({ data, onSelect }: { data: Row[]; onSelect?: (row: Row) => void }) {
   if (data.length === 0) return <p className="muted">Noch keine Daten.</p>;
   return (
     <ResponsiveContainer width="100%" height={Math.max(220, data.length * 30)}>
@@ -30,7 +30,12 @@ export default function TopChart({ data }: { data: Row[] }) {
           itemStyle={{ color: "#f1edff" }}
           formatter={(value: number) => [`${value} Scrobbles`, ""]}
         />
-        <Bar dataKey="playcount" radius={[0, 6, 6, 0]}>
+        <Bar
+          dataKey="playcount"
+          radius={[0, 6, 6, 0]}
+          cursor={onSelect ? "pointer" : undefined}
+          onClick={(row: any) => onSelect?.(row.payload ?? row)}
+        >
           {data.map((_, i) => (
             <Cell key={i} fill={COLORS[i % COLORS.length]} />
           ))}

@@ -32,6 +32,10 @@ Instanz laufen. Die Details stehen in [API.md](API.md).
   Musik-Diversitäts-Score (Shannon-Entropie über die Künstlerverteilung), Nachteulen-Score,
   "an diesem Tag vor Jahren", Top-Künstler-Anteil, instanzweites Leaderboard.
 - **Love-Funktion**, direkt in der Timeline oder per API.
+- **Asynchrone MusicBrainz-Anreicherung**: Tracks, Künstler und Alben werden nach dem
+  Scrobbeln im Hintergrund zugeordnet. Cover aus dem Cover Art Archive werden lokal gecacht
+  und mit einem sofortigen Fallback angezeigt. Externe Dienste liegen nie im kritischen Pfad
+  der Scrobble- oder Seiten-Requests.
 - **last.fm-Import**: pro Instanz einmalig last.fm-API-Key hinterlegen (Admin), danach
   kann jeder User per Button in den Einstellungen seinen kompletten last.fm-Verlauf
   importieren. Läuft als Hintergrund-Job mit Fortschrittsanzeige. Mehrfacher Import ist
@@ -69,6 +73,7 @@ docker compose up -d --build
 1. Repo auf den Server klonen.
 2. `./setup.sh` ausführen (erzeugt `.env` mit Secrets und startet den Stack).
 3. In `.env` noch `PUBLIC_URL=https://scrobbler.deine-domain.de` setzen und
+   `MUSICBRAINZ_CONTACT=https://deine-domain.de/kontakt` (oder eine Kontaktadresse) ergänzen.
    `docker compose up -d` erneut laufen lassen, damit es übernommen wird.
 4. Reverse Proxy (nginx/Caddy/Traefik) auf Container-Port `4000` (bzw. den in
    `HOST_PORT` gewählten Host-Port) zeigen lassen, TLS terminieren.
@@ -145,6 +150,24 @@ Alternativ per CLI (z.B. für einen Erst-Import mehrerer Accounts):
 cd server
 npm run import:lastfm -- --user <lokaler-benutzername> --lastfm <lastfm-benutzername> --api-key <key>
 ```
+
+## MusicBrainz und Cover Art Archive
+
+Die Anreicherung ist standardmäßig aktiv und arbeitet bestehende sowie neue Tracks in einer
+gedrosselten Hintergrundwarteschlange ab. MusicBrainz wird mit höchstens einem Request pro
+Sekunde abgefragt; Fehler werden mit Backoff wiederholt. Nicht gefundene Einträge werden erst
+nach 30 Tagen automatisch erneut geprüft. Der Admin sieht Fortschritt und Fehler unter
+„Einstellungen“.
+
+Künstler und Alben sind aus Timeline und Top-Charts anklickbar. Die Detailseiten verbinden
+MusicBrainz-Metadaten mit persönlichen Hörzahlen. Genre-Statistiken nennen ihren Abdeckungsgrad,
+und unsichere Recording-Treffer können Admins in den Einstellungen manuell zuordnen.
+
+Setze `MUSICBRAINZ_CONTACT` auf eine erreichbare Projekt- oder Kontakt-URL. Mit
+`MUSICBRAINZ_ENABLED=false` lässt sich die Integration vollständig abschalten. Cover liegen im
+Docker-Volume `cover-cache` und gehen bei einem Container-Neubau nicht verloren. Metadaten
+stammen von [MusicBrainz](https://musicbrainz.org/), Cover vom
+[Cover Art Archive](https://coverartarchive.org/).
 
 ## Entwicklung (ohne Docker)
 

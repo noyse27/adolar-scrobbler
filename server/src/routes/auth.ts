@@ -16,7 +16,7 @@ export default async function authRoutes(app: FastifyInstance) {
       setupToken?: string;
       inviteToken?: string;
     };
-  }>("/api/auth/register", async (req, reply) => {
+  }>("/api/auth/register", { config: { rateLimit: { max: 10, timeWindow: "1 minute" } } }, async (req, reply) => {
     const { username, password, displayName, setupToken, inviteToken } = req.body ?? ({} as any);
 
     const userCount = await prisma.user.count();
@@ -61,6 +61,7 @@ export default async function authRoutes(app: FastifyInstance) {
     const token = signWebToken(user.id);
     reply.setCookie("adolar_session", token, {
       httpOnly: true,
+      secure: config.publicUrl.startsWith("https://"),
       sameSite: "lax",
       path: "/",
       maxAge: 60 * 60 * 24 * 30,
@@ -70,6 +71,7 @@ export default async function authRoutes(app: FastifyInstance) {
 
   app.post<{ Body: { username: string; password: string } }>(
     "/api/auth/login",
+    { config: { rateLimit: { max: 10, timeWindow: "1 minute" } } },
     async (req, reply) => {
       const { username, password } = req.body ?? ({} as any);
       const user = await prisma.user.findUnique({ where: { username } });
@@ -79,6 +81,7 @@ export default async function authRoutes(app: FastifyInstance) {
       const token = signWebToken(user.id);
       reply.setCookie("adolar_session", token, {
         httpOnly: true,
+        secure: config.publicUrl.startsWith("https://"),
         sameSite: "lax",
         path: "/",
         maxAge: 60 * 60 * 24 * 30,

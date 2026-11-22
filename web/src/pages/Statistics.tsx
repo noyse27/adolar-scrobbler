@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { api } from "../api";
 import Heatmap from "../components/Heatmap";
 import ListeningClock, { WeekdayChart } from "../components/ListeningClock";
@@ -14,6 +14,7 @@ function formatMs(ms: number): string {
 
 export default function Statistics() {
   const { username } = useParams();
+  const navigate = useNavigate();
   const [range, setRange] = useState("30d");
   const [overview, setOverview] = useState<any>(null);
   const [artists, setArtists] = useState<any[]>([]);
@@ -24,6 +25,7 @@ export default function Statistics() {
     decades: any[];
     coverage?: { known: number; total: number; ratio: number };
   }>({ years: [], decades: [] });
+  const [genres, setGenres] = useState<{ genres: any[]; coverage?: { known: number; total: number; ratio: number } }>({ genres: [] });
   const [heatmap, setHeatmap] = useState<any[]>([]);
   const [clock, setClock] = useState<{ hourly: any[]; weekly: any[] } | null>(null);
   const [wild, setWild] = useState<any>(null);
@@ -35,8 +37,9 @@ export default function Statistics() {
       api.overview(username, range), api.topArtists(username, range),
       api.topAlbums(username, range), api.topTracks(username, range),
       api.releaseYears(username, range),
-    ]).then(([o, ar, al, tr, ry]) => {
-      setOverview(o); setArtists(ar); setAlbums(al); setTracks(tr); setReleaseYears(ry);
+      api.genres(username, range),
+    ]).then(([o, ar, al, tr, ry, ge]) => {
+      setOverview(o); setArtists(ar); setAlbums(al); setTracks(tr); setReleaseYears(ry); setGenres(ge);
     });
   }, [username, range]);
 
@@ -76,13 +79,14 @@ export default function Statistics() {
         </div>
       )}
       <div className="grid grid-2">
-        <Chart title="Top Künstler" data={artists} />
+        <Chart title="Top Künstler" data={artists} onSelect={(row) => navigate(`/u/${username}/artist/${row.artistId}`)} />
         <Chart title="Top Tracks" data={tracks} />
-        <Chart title="Top Alben" data={albums} />
+        <Chart title="Top Alben" data={albums} onSelect={(row) => navigate(`/u/${username}/album/${row.albumId}`)} />
         <div className="card"><h3>Hör-Uhr (Stunde des Tages)</h3>{clock && <ListeningClock hourly={clock.hourly} />}</div>
         <div className="card"><h3>Hörtage</h3>{clock && <WeekdayChart weekly={clock.weekly} />}</div>
         <Chart title="Meistgehörte Jahrgänge" data={releaseYears.years.slice(0, 15)} note={coverageNote(releaseYears.coverage)} />
         <Chart title="Meistgehörte Jahrzehnte" data={releaseYears.decades} note={coverageNote(releaseYears.coverage)} />
+        <Chart title="Genres" data={genres.genres} note={genreCoverageNote(genres.coverage)} />
       </div>
       <div className="card"><h3>Scrobble-Kalender {year}</h3><Heatmap days={heatmap} year={year} /></div>
       {wild && (
@@ -110,8 +114,8 @@ export default function Statistics() {
   );
 }
 
-function Chart({ title, data, note }: { title: string; data: any[]; note?: string }) {
-  return <div className="card"><h3>{title}</h3><TopChart data={data} />{note && <p className="chart-note">{note}</p>}</div>;
+function Chart({ title, data, note, onSelect }: { title: string; data: any[]; note?: string; onSelect?: (row: any) => void }) {
+  return <div className="card"><h3>{title}</h3><TopChart data={data} onSelect={onSelect} />{note && <p className="chart-note">{note}</p>}</div>;
 }
 
 function StatCard({ value, label, card = false }: { value: React.ReactNode; label: string; card?: boolean }) {
@@ -143,4 +147,9 @@ function buildInsights(overview: any, wild: any, clock: { hourly: any[]; weekly:
 function coverageNote(coverage?: { known: number; total: number; ratio: number }): string | undefined {
   if (!coverage || coverage.total === 0) return undefined;
   return `Erscheinungsjahr für ${Math.round(coverage.ratio * 100)} % der Scrobbles bekannt (${coverage.known.toLocaleString("de-DE")} von ${coverage.total.toLocaleString("de-DE")}).`;
+}
+
+function genreCoverageNote(coverage?: { known: number; total: number; ratio: number }): string | undefined {
+  if (!coverage || coverage.total === 0) return undefined;
+  return `Genre-Daten für ${Math.round(coverage.ratio * 100)} % der Scrobbles vorhanden. Ein Track kann mehreren Genres zugeordnet sein.`;
 }

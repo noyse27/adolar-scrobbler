@@ -12,6 +12,15 @@ enum Role {
   USER
 }
 
+enum EnrichmentStatus {
+  PENDING
+  RUNNING
+  RETRY
+  DONE
+  NO_MATCH
+  FAILED
+}
+
 model User {
   id           String   @id @default(cuid())
   username     String   @unique
@@ -70,10 +79,19 @@ model Artist {
   name      String
   nameKey   String   @unique // lowercased/trimmed, used for dedup lookups
   mbid      String?
+  sortName  String?
+  type      String?
+  country   String?
+  disambiguation String?
+  beginDate String?
+  endDate   String?
+  genres    String[] @default([])
   createdAt DateTime @default(now())
 
   albums Album[]
   tracks Track[]
+
+  @@index([mbid])
 }
 
 model Album {
@@ -81,6 +99,12 @@ model Album {
   name      String
   nameKey   String
   mbid      String?
+  releaseGroupMbid String?
+  primaryType String?
+  secondaryTypes String[] @default([])
+  firstReleaseDate String?
+  coverPath String?
+  coverCheckedAt DateTime?
   artistId  String
   artist    Artist   @relation(fields: [artistId], references: [id])
   createdAt DateTime @default(now())
@@ -88,6 +112,8 @@ model Album {
   tracks Track[]
 
   @@unique([artistId, nameKey])
+  @@index([mbid])
+  @@index([releaseGroupMbid])
 }
 
 model Track {
@@ -97,6 +123,8 @@ model Track {
   mbid       String?
   durationMs Int?
   year       Int?
+  artistCredits String[] @default([])
+  artistCreditMbids String[] @default([])
   artistId   String
   artist     Artist   @relation(fields: [artistId], references: [id])
   albumId    String?
@@ -109,6 +137,23 @@ model Track {
 
   @@unique([artistId, nameKey])
   @@index([albumId])
+  @@index([mbid])
+}
+
+model EnrichmentJob {
+  id            String           @id @default(cuid())
+  targetType    String
+  targetId      String
+  status        EnrichmentStatus @default(PENDING)
+  attempts      Int              @default(0)
+  nextAttemptAt DateTime         @default(now())
+  lastError     String?
+  candidates    Json?
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+
+  @@unique([targetType, targetId])
+  @@index([status, nextAttemptAt])
 }
 
 model Scrobble {

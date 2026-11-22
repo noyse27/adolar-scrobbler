@@ -52,6 +52,12 @@ export const api = {
     request(`/api/users/${username}/charts/tracks?range=${range}&limit=${limit}`),
   releaseYears: (username: string, range: string) =>
     request(`/api/users/${username}/charts/release-years?range=${range}`),
+  genres: (username: string, range: string) =>
+    request(`/api/users/${username}/charts/genres?range=${range}`),
+  artist: (id: string, username: string) =>
+    request(`/api/artists/${id}?username=${encodeURIComponent(username)}`),
+  album: (id: string, username: string) =>
+    request(`/api/albums/${id}?username=${encodeURIComponent(username)}`),
   recent: (username: string, limit = 25) => request(`/api/users/${username}/recent?limit=${limit}`),
   loves: (username: string) => request(`/api/users/${username}/loves`),
   heatmap: (username: string, year: number) => request(`/api/users/${username}/heatmap?year=${year}`),
@@ -77,6 +83,13 @@ export const api = {
     }),
   setAllowRegistration: (allow: boolean) =>
     request("/api/admin/settings/registration", { method: "POST", body: JSON.stringify({ allow }) }),
+  retryMusicBrainz: () => request("/api/admin/musicbrainz/retry", { method: "POST" }),
+  musicBrainzCandidates: () => request("/api/admin/musicbrainz/candidates"),
+  selectMusicBrainzCandidate: (jobId: string, recordingMbid: string) =>
+    request(`/api/admin/musicbrainz/jobs/${jobId}/select`, {
+      method: "POST",
+      body: JSON.stringify({ recordingMbid }),
+    }),
 
   invites: () => request("/api/admin/invites"),
   createInvite: (opts: { expiresInHours?: number; maxUses?: number }) =>
